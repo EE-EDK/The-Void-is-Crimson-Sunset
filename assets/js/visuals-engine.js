@@ -200,7 +200,7 @@
                 // Population A: Bright foreground stars (sparse, large)
                 vec2 starGridA = floor(refractedUv * 40.0);
                 float starSeedA = hash(starGridA);
-                float starBrightA = pow(starSeedA, 80.0);
+                float starBrightA = pow(starSeedA, 40.0);
                 vec2 starCellA = fract(refractedUv * 40.0) - 0.5;
                 // Jitter star position within cell
                 vec2 starOffA = vec2(hash(starGridA + 0.1), hash(starGridA + 0.2)) - 0.5;
@@ -216,7 +216,7 @@
                 // Population B: Medium field stars
                 vec2 starGridB = floor(refractedUv * 90.0);
                 float starSeedB = hash(starGridB);
-                float starBrightB = pow(starSeedB, 60.0);
+                float starBrightB = pow(starSeedB, 35.0);
                 vec2 starCellB = fract(refractedUv * 90.0) - 0.5;
                 vec2 starOffB = vec2(hash(starGridB + 3.1), hash(starGridB + 3.2)) - 0.5;
                 float starDistB = length(starCellB - starOffB * 0.5);
@@ -228,7 +228,7 @@
                 // Population C: Dense dim background stars (tiny, numerous)
                 vec2 starGridC = floor(refractedUv * 200.0);
                 float starSeedC = hash(starGridC);
-                float starBrightC = pow(starSeedC, 45.0) * 0.4;
+                float starBrightC = pow(starSeedC, 30.0) * 0.5;
                 starCol += vec3(0.9, 0.9, 1.0) * starBrightC;
 
                 // Cluster stars in nebula-dense regions — not everywhere
@@ -267,7 +267,7 @@
                 col += vec3(0.15, 0.02, 0.04) * dust1 * 0.25; // warm dust lane
                 col += vec3(0.02, 0.03, 0.08) * dust2 * 0.2;  // cool distant nebulosity
                 // Stars punch through — brighter where vortex is dimmer
-                float starVisibility = 0.6 + 0.6 * (1.0 - vortexFalloff);
+                float starVisibility = 0.8 + 1.0 * (1.0 - vortexFalloff);
                 col += starCol * starVisibility;
 
                 // Rotating Accretion Disk — multi-layer photorealistic structure
@@ -325,9 +325,9 @@
                     col = mix(col, vec3(0.0), mask3); // Absolute void center
 
                     // The Watcher — something stirs inside the absolute void
-                    float innerGlow = exp(-dist * dist * 60.0);
+                    float innerGlow = exp(-dist * dist * 25.0);
                     float pulse = 0.6 + 0.4 * sin(u_time * 0.3);
-                    col += vec3(0.4, 0.02, 0.0) * innerGlow * pulse * 0.25;
+                    col += vec3(0.5, 0.03, 0.0) * innerGlow * pulse * 0.45;
 
                     // Counter-rotating luminous threads — light from the impossible
                     vec2 lightUv = uv * rot(u_time * 1.5 + coreSwirl);
@@ -340,11 +340,11 @@
                     col += u_themeColor * rim * 1.0 * (0.8 + layer1 * 0.4);
 
                     // Photon ring — gravitational lensing at the event horizon
-                    float photonRing = smoothstep(0.26, 0.29, dist) * smoothstep(0.34, 0.31, dist);
+                    float photonRing = smoothstep(0.40, 0.44, dist) * smoothstep(0.52, 0.48, dist);
                     float ringNoise = noise(vec2(angle * 10.0 + u_time * 0.25, dist * 8.0));
                     photonRing *= 0.7 + ringNoise * 0.3;
                     vec3 ringColor = mix(vec3(1.0, 0.5, 0.1), vec3(1.0, 0.9, 0.7), photonRing);
-                    col += ringColor * photonRing * 1.2;
+                    col += ringColor * photonRing * 1.5;
 
                     // Leaking / Bleeding elements
                     float leak = pow(fbm(uv * rot(u_time * 0.1) * 3.0), 3.0) * density;
