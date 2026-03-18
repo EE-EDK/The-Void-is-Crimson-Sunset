@@ -93,9 +93,12 @@
     }
 
     function createGenerativeShader() {
-        // Determine theme based on page
+        // Determine theme based on page - Robust detection for GitHub Pages
         const path = window.location.pathname;
-        const isMainPage = path.endsWith('/') || path.endsWith('index.html') || path.endsWith('index-refactored.html');
+        const isMainPage = path.endsWith('/') || 
+                           path.endsWith('index.html') || 
+                           path.endsWith('index-refactored.html') ||
+                           document.querySelector('.acts-navigation') !== null;
 
         // Uniforms for the fragment shader
         uniforms = {
