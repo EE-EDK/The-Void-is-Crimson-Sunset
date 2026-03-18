@@ -182,9 +182,9 @@
 
                 // 1. THE VORTEX / CHASM (Main Page Special)
                 if (u_isMainPage > 0.5) {
-                    // Increased speed and switched to negative rotation for the outer swirl
-                    float swirl = 5.0 * exp(-dist * 1.0);
-                    uv *= rot(-u_time * 0.8 - swirl);
+                    // Reverted to normal slow speed
+                    float swirl = 4.5 * exp(-dist * 1.2);
+                    uv *= rot(u_time * 0.25 + swirl);
                 }
 
                 // 2. THE EVENT HORIZON (Peripheral Refraction)
@@ -221,16 +221,16 @@
                 col += u_themeColor * n * 0.3;
                 col += stars * (0.5 + u_tension);
 
-                // Rotating Accretion Disk Rays (Brighter & Faster)
+                // Rotating Accretion Disk Rays (Normal Speed)
                 float angle = atan(uv.y, uv.x);
-                float rays = noise(vec2(angle * 4.0 + u_time * 0.5, dist * 0.4)) * 0.5 + 0.5;
+                float rays = noise(vec2(angle * 4.0 + u_time * 0.2, dist * 0.4)) * 0.5 + 0.5;
                 col += u_themeColor * rays * density * 0.7;
 
                 // 6. THE CHASM CORE (Visualizing the Hole)
                 if (u_isMainPage > 0.5) {
-                    // Aggressive positive counter-rotation for the inner core
-                    float coreSwirl = 3.0 * exp(-dist * 2.5);
-                    vec2 coreUv = uv * rot(u_time * 1.5 + coreSwirl);
+                    // Maintained aggressive rotation for the inner core only
+                    float coreSwirl = 3.5 * exp(-dist * 2.5);
+                    vec2 coreUv = uv * rot(-u_time * 2.0 - coreSwirl);
                     
                     // Multiple dark organic layers
                     float layer1 = fbm(coreUv * 2.0 + u_time * 0.1);
