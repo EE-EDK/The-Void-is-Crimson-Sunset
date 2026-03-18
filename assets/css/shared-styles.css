@@ -89,8 +89,8 @@ body {
     opacity: 1;
 }
 
-/* ===== STARFIELD BACKGROUND ===== */
-body::before {
+/* ===== STARFIELD BACKGROUND (Disabled to remove stray pixel dots) ===== */
+/* body::before {
     content: '';
     position: fixed;
     top: 0;
@@ -111,7 +111,7 @@ body::before {
     animation: stars 200s linear infinite;
     pointer-events: none;
     z-index: 0;
-}
+} */
 
 @keyframes stars {
     from { background-position: 0% 0%; }
