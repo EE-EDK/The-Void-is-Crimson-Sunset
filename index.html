@@ -67,28 +67,28 @@
         }
 
         .title {
-            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-size: clamp(2rem, 6vw, 4rem);
             font-weight: 300;
             color: #ffffff;
             letter-spacing: 0.2em;
             text-shadow: 0 0 10px rgba(255, 0, 0, 0.5), 0 0 20px rgba(255, 0, 0, 0.4);
             animation: pulse 5s infinite ease-in-out;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
         }
 
         .acts-navigation {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1rem;
         }
 
         .act-link {
-            font-size: clamp(1.2rem, 4vw, 1.8rem);
+            font-size: clamp(1.1rem, 3.5vw, 1.6rem);
             font-weight: 400;
             color: #8b0000;
             text-decoration: none;
             border: 1px solid #4d0000;
-            padding: 0.75rem 2rem;
+            padding: 0.5rem 1.5rem;
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
@@ -122,10 +122,10 @@
         .act-link::after {
             content: attr(data-subtitle);
             display: block;
-            font-size: 0.55em;
+            font-size: 0.5em;
             color: rgba(139, 0, 0, 0);
             letter-spacing: 2px;
-            margin-top: 4px;
+            margin-top: 2px;
             transition: color 0.8s ease;
             font-style: italic;
         }
@@ -136,18 +136,18 @@
 
         .index-tagline {
             font-family: 'Cormorant Garamond', serif;
-            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            font-size: clamp(0.8rem, 2vw, 1rem);
             color: rgba(200, 200, 200, 0.5);
             letter-spacing: 3px;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             text-transform: lowercase;
         }
 
         .index-warning {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: rgba(139, 0, 0, 0.4);
             letter-spacing: 2px;
-            margin-top: 3rem;
+            margin-top: 2rem;
             animation: warning-pulse 4s ease-in-out infinite;
         }
 
