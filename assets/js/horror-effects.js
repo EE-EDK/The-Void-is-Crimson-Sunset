@@ -47,13 +47,12 @@
             onLoadDelay: 6000,
             breathCycle: 12000,
         },
-    };
-
-    // =========================================================================
+    };    // =========================================================================
     // AUDIO ENGINE
     // =========================================================================
     var ctx = null;
     var master = null;
+    var reverbNode = null;
     var ready = false;
     var droneGain = null;
     var droneNodes = [];
@@ -66,6 +65,37 @@
             master = ctx.createGain();
             master.gain.value = CONFIG.audio.masterVolume;
             master.connect(ctx.destination);
+            
+            // --- SPATIAL REVERB BUS (Creates a vast, cavernous environment) ---
+            reverbNode = ctx.createGain();
+            reverbNode.gain.value = 0.6; // Wet send level
+            
+            var delayL = ctx.createDelay(); delayL.delayTime.value = 0.27;
+            var delayR = ctx.createDelay(); delayR.delayTime.value = 0.37;
+            var fbL = ctx.createGain(); fbL.gain.value = 0.45;
+            var fbR = ctx.createGain(); fbR.gain.value = 0.45;
+            var crossL = ctx.createGain(); crossL.gain.value = 0.25;
+            var crossR = ctx.createGain(); crossR.gain.value = 0.25;
+            
+            var damp = ctx.createBiquadFilter(); 
+            damp.type = 'lowpass'; 
+            damp.frequency.value = 2500;
+
+            reverbNode.connect(damp);
+            damp.connect(delayL);
+            damp.connect(delayR);
+
+            delayL.connect(fbL); fbL.connect(delayL);
+            delayR.connect(fbR); fbR.connect(delayR);
+            delayL.connect(crossL); crossL.connect(delayR);
+            delayR.connect(crossR); crossR.connect(delayL);
+
+            var panL = ctx.createStereoPanner(); panL.pan.value = -0.8;
+            var panR = ctx.createStereoPanner(); panR.pan.value = 0.8;
+
+            delayL.connect(panL); panL.connect(master);
+            delayR.connect(panR); panR.connect(master);
+
             if (ctx.state === 'suspended') ctx.resume();
             ready = true;
             startDrone();
@@ -84,16 +114,16 @@
         droneGain = ctx.createGain();
         droneGain.gain.value = 0;
         droneGain.connect(master);
+        droneGain.connect(reverbNode); // Send to cavern
         droneGain.gain.linearRampToValueAtTime(CONFIG.audio.droneBase, ctx.currentTime + 10);
 
         // Sub-bass foundation (The "Void" hum)
         createDroneLayer(42, 'sine', 0.4, 0.03, 2);
         
-        // Background Dissonance: Aleatoric Cluster
-        // These are slightly detuned and modulate independently to create "shimmering" unease
-        createDroneLayer(44.5, 'sine', 0.2, 0.05, 1.5); // Minor 2nd
-        createDroneLayer(59.5, 'sine', 0.15, 0.02, 1);   // Tritone
-        createDroneLayer(89, 'sine', 0.05, 0.08, 0.5);   // Minor 9th
+        // Background Dissonance: Aleatoric Cluster (Smoother waves)
+        createDroneLayer(44.5, 'triangle', 0.15, 0.05, 1.5); 
+        createDroneLayer(59.5, 'sine', 0.12, 0.02, 1);   
+        createDroneLayer(89, 'triangle', 0.04, 0.08, 0.5);   
         
         // High ghost tones (The "Crimson" shimmer)
         createDroneLayer(15500, 'sine', 0.01, 0.01, 0.1);
@@ -112,20 +142,20 @@
         var bp = ctx.createBiquadFilter();
         bp.type = 'bandpass';
         bp.frequency.value = 180;
-        bp.Q.value = 0.6;
+        bp.Q.value = 0.4; // Softer Q for more natural wind
 
         var noiseLfo = ctx.createOscillator();
         noiseLfo.type = 'sine';
         noiseLfo.frequency.value = 0.015;
         var noiseLfoAmt = ctx.createGain();
-        noiseLfoAmt.gain.value = 60;
+        noiseLfoAmt.gain.value = 80;
         noiseLfo.connect(noiseLfoAmt);
         noiseLfoAmt.connect(bp.frequency);
         noiseLfo.start();
         droneNodes.push(noiseLfo);
 
         var nGain = ctx.createGain();
-        nGain.gain.value = 0.02;
+        nGain.gain.value = 0.025;
 
         noise.connect(bp);
         bp.connect(nGain);
@@ -143,6 +173,16 @@
         var g = ctx.createGain();
         g.gain.value = vol;
         
+        // Add subtle FM modulation for organic instability
+        var mod = ctx.createOscillator();
+        mod.type = 'sine';
+        mod.frequency.value = freq * 0.5;
+        var modG = ctx.createGain();
+        modG.gain.value = freq * 0.02;
+        mod.connect(modG);
+        modG.connect(osc.frequency);
+        mod.start();
+
         var lfo = ctx.createOscillator();
         lfo.type = 'sine';
         lfo.frequency.value = lfoFreq;
@@ -157,47 +197,32 @@
         
         osc.start();
         lfo.start();
-        droneNodes.push(osc, lfo);
+        droneNodes.push(osc, lfo, mod);
     }
 
     function updateTensionLoop() {
         if (!ready) return;
-        
-        // Tension slowly builds with scroll and triggers
-        // We use it to modulate filter frequencies and oscillator detune
         var now = ctx.currentTime;
         var targetVol = CONFIG.audio.droneBase * (1 + tension * 4);
         droneGain.gain.linearRampToValueAtTime(targetVol, now + 0.5);
-        
         setTimeout(updateTensionLoop, 500);
     }
 
-    // --- BINAURAL BEATING (Theta state for unease) ---
+    // --- BINAURAL BEATING ---
     function startBinauralBeat() {
         if (!ready) return;
-
         var binGain = ctx.createGain();
         binGain.gain.value = CONFIG.audio.binauralVolume;
         binGain.connect(droneGain);
 
-        var oscL = ctx.createOscillator();
-        oscL.type = 'sine';
-        oscL.frequency.value = 100;
-        var panL = ctx.createStereoPanner();
-        panL.pan.value = -1;
-        oscL.connect(panL);
-        panL.connect(binGain);
-        oscL.start();
+        var oscL = ctx.createOscillator(); oscL.type = 'sine'; oscL.frequency.value = 90;
+        var panL = ctx.createStereoPanner(); panL.pan.value = -1;
+        oscL.connect(panL); panL.connect(binGain); oscL.start();
         droneNodes.push(oscL);
 
-        var oscR = ctx.createOscillator();
-        oscR.type = 'sine';
-        oscR.frequency.value = 106.5; // 6.5Hz beating
-        var panR = ctx.createStereoPanner();
-        panR.pan.value = 1;
-        oscR.connect(panR);
-        panR.connect(binGain);
-        oscR.start();
+        var oscR = ctx.createOscillator(); oscR.type = 'sine'; oscR.frequency.value = 96.5; 
+        var panR = ctx.createStereoPanner(); panR.pan.value = 1;
+        oscR.connect(panR); panR.connect(binGain); oscR.start();
         droneNodes.push(oscR);
     }
 
@@ -218,16 +243,14 @@
 
     function playWhisper() {
         if (!ready || document.hidden) return;
-
-        var dur = 1.8 + Math.random() * 3.0;
+        var dur = 2.0 + Math.random() * 3.5;
         var now = ctx.currentTime;
         var len = Math.floor(ctx.sampleRate * dur);
         var buf = ctx.createBuffer(1, len, ctx.sampleRate);
         var d = buf.getChannelData(0);
 
-        // Amplitude-modulated noise with speech-like formant cadence
-        var formantFreq = 2 + Math.random() * 6;
-        var secondFormant = 0.3 + Math.random() * 0.5;
+        var formantFreq = 2 + Math.random() * 5;
+        var secondFormant = 0.3 + Math.random() * 0.4;
         for (var i = 0; i < len; i++) {
             var t = i / ctx.sampleRate;
             var mod1 = Math.sin(t * Math.PI * formantFreq);
@@ -239,42 +262,34 @@
         var src = ctx.createBufferSource();
         src.buffer = buf;
 
-        // Double bandpass for more speech-like quality
-        var filt1 = ctx.createBiquadFilter();
-        filt1.type = 'bandpass';
-        filt1.frequency.value = 500 + Math.random() * 1200;
-        filt1.Q.value = 4;
+        // Comb filtering to make the whisper sound like a throat
+        var throatDelay = ctx.createDelay();
+        throatDelay.delayTime.value = 0.002 + Math.random() * 0.003; 
+        var throatFb = ctx.createGain();
+        throatFb.gain.value = 0.8;
+        throatDelay.connect(throatFb); throatFb.connect(throatDelay);
+        src.connect(throatDelay);
 
-        var filt2 = ctx.createBiquadFilter();
-        filt2.type = 'bandpass';
-        filt2.frequency.value = 1800 + Math.random() * 2000;
-        filt2.Q.value = 2;
-
-        var merge = ctx.createGain();
-        merge.gain.value = 1;
+        var filt1 = ctx.createBiquadFilter(); filt1.type = 'bandpass'; filt1.frequency.value = 600 + Math.random() * 800; filt1.Q.value = 2;
+        var filt2 = ctx.createBiquadFilter(); filt2.type = 'highpass'; filt2.frequency.value = 2000;
 
         var g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(CONFIG.audio.whisperVolume, now + 0.15);
+        g.gain.linearRampToValueAtTime(CONFIG.audio.whisperVolume, now + 0.2);
         g.gain.setValueAtTime(CONFIG.audio.whisperVolume, now + dur * 0.7);
         g.gain.linearRampToValueAtTime(0, now + dur);
 
         var pan = ctx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.9;
+        pan.pan.value = (Math.random() - 0.5) * 1.5;
+        pan.pan.linearRampToValueAtTime((Math.random() - 0.5) * 1.5, now + dur);
 
-        // Pan movement during whisper
-        pan.pan.linearRampToValueAtTime(
-            (Math.random() - 0.5) * 1.9,
-            now + dur
-        );
-
-        src.connect(filt1);
-        src.connect(filt2);
-        filt1.connect(merge);
-        filt2.connect(merge);
-        merge.connect(g);
+        throatDelay.connect(filt1);
+        filt1.connect(filt2);
+        filt2.connect(g);
         g.connect(pan);
         pan.connect(master);
+        pan.connect(reverbNode); // Wet sound
+
         src.start(now);
         src.stop(now + dur);
     }
@@ -286,129 +301,95 @@
         var now = ctx.currentTime;
 
         for (var i = 0; i < beats; i++) {
-            var t = now + i * 0.72;
+            var t = now + i * 0.75;
 
-            // Lub — chest resonance sub-bass
+            // Lub - Physical thud (Sine sweep + soft noise)
             var o1 = ctx.createOscillator();
             o1.type = 'sine';
-            o1.frequency.setValueAtTime(65, t);
-            o1.frequency.exponentialRampToValueAtTime(22, t + 0.18);
+            o1.frequency.setValueAtTime(80, t);
+            o1.frequency.exponentialRampToValueAtTime(20, t + 0.15);
             var g1 = ctx.createGain();
             g1.gain.setValueAtTime(0, t);
-            g1.gain.linearRampToValueAtTime(CONFIG.audio.heartbeatVolume, t + 0.01);
-            g1.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-            o1.connect(g1);
-            g1.connect(master);
-            o1.start(t);
-            o1.stop(t + 0.4);
+            g1.gain.linearRampToValueAtTime(CONFIG.audio.heartbeatVolume, t + 0.02);
+            g1.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+            
+            var shaper = ctx.createWaveShaper();
+            shaper.curve = new Float32Array([-0.8, 0, 0.8]);
+            o1.connect(shaper); shaper.connect(g1); g1.connect(master);
+            o1.start(t); o1.stop(t + 0.35);
 
-            // Thump body — adds weight
-            var thump = ctx.createOscillator();
-            thump.type = 'triangle';
-            thump.frequency.setValueAtTime(50, t);
-            thump.frequency.exponentialRampToValueAtTime(18, t + 0.12);
-            var tg = ctx.createGain();
-            tg.gain.setValueAtTime(0, t);
-            tg.gain.linearRampToValueAtTime(CONFIG.audio.heartbeatVolume * 0.4, t + 0.008);
-            tg.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-            thump.connect(tg);
-            tg.connect(master);
-            thump.start(t);
-            thump.stop(t + 0.25);
-
-            // Dub
+            // Dub - Heavier follow up
             var o2 = ctx.createOscillator();
             o2.type = 'sine';
-            o2.frequency.value = 30;
+            o2.frequency.setValueAtTime(60, t + 0.2);
+            o2.frequency.exponentialRampToValueAtTime(15, t + 0.4);
             var g2 = ctx.createGain();
-            g2.gain.setValueAtTime(0, t + 0.16);
-            g2.gain.linearRampToValueAtTime(CONFIG.audio.heartbeatVolume * 0.55, t + 0.175);
-            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-            o2.connect(g2);
-            g2.connect(master);
-            o2.start(t + 0.14);
-            o2.stop(t + 0.5);
+            g2.gain.setValueAtTime(0, t + 0.18);
+            g2.gain.linearRampToValueAtTime(CONFIG.audio.heartbeatVolume * 0.8, t + 0.22);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+            o2.connect(g2); g2.connect(master);
+            o2.start(t + 0.18); o2.stop(t + 0.55);
         }
 
-        // Pulse vignette + chromatic with heartbeat
         var beat = 0;
         var pulse = setInterval(function () {
             if (beat >= beats) { clearInterval(pulse); return; }
             setVignetteIntensity(0.72);
-            chromaticPulse(200);
-            setTimeout(function () {
-                setVignetteIntensity(CONFIG.visual.vignetteBase + scrollIntensity * 0.2);
-            }, 320);
+            if(window.HorrorEngine.chromaticPulse) window.HorrorEngine.chromaticPulse(250);
+            setTimeout(function () { setVignetteIntensity(CONFIG.visual.vignetteBase + scrollIntensity * 0.2); }, 350);
             beat++;
-        }, 720);
+        }, 750);
     }
 
-    // --- SHARP DISSONANT STINGER (much louder, more startling) ---
+    // --- ORGANIC SHARP STINGER (FM Synthesis) ---
     function playSharpTone() {
         if (!ready) return;
         var now = ctx.currentTime;
+        var dur = 0.8;
 
-        // Three detuned oscillators for maximum dissonance
-        var freqs = [
-            1800 + Math.random() * 2200,
-            2050 + Math.random() * 2600,
-            3100 + Math.random() * 1800
-        ];
-        for (var f = 0; f < freqs.length; f++) {
-            var o = ctx.createOscillator();
-            o.type = 'sawtooth';
-            o.frequency.value = freqs[f];
+        var carrier = ctx.createOscillator();
+        carrier.type = 'triangle';
+        carrier.frequency.value = 800 + Math.random() * 400;
 
-            // Rapid pitch drop for more startling effect
-            o.frequency.exponentialRampToValueAtTime(freqs[f] * 0.6, now + 0.3);
+        var modulator = ctx.createOscillator();
+        modulator.type = 'square';
+        modulator.frequency.value = carrier.frequency.value * (1.5 + Math.random() * 0.5); 
+        
+        var modGain = ctx.createGain();
+        modGain.gain.setValueAtTime(2000, now);
+        modGain.gain.exponentialRampToValueAtTime(10, now + dur);
 
-            var hp = ctx.createBiquadFilter();
-            hp.type = 'highpass';
-            hp.frequency.value = 1200;
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
 
-            var g = ctx.createGain();
-            g.gain.setValueAtTime(0, now);
-            // Very fast attack — makes it startling
-            g.gain.linearRampToValueAtTime(CONFIG.audio.stingerVolume, now + 0.003);
-            g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        var filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(4000, now);
+        filter.frequency.exponentialRampToValueAtTime(500, now + dur);
+        filter.Q.value = 5;
 
-            o.connect(hp);
-            hp.connect(g);
-            g.connect(master);
-            o.start(now);
-            o.stop(now + 0.55);
-        }
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(CONFIG.audio.stingerVolume * 1.2, now + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
-        // Add a noise burst for extra edge
-        var nLen = Math.floor(ctx.sampleRate * 0.15);
-        var nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
-        var nD = nBuf.getChannelData(0);
-        for (var i = 0; i < nLen; i++) nD[i] = (Math.random() * 2 - 1);
+        carrier.connect(filter);
+        filter.connect(g);
+        g.connect(master);
+        g.connect(reverbNode);
 
-        var nSrc = ctx.createBufferSource();
-        nSrc.buffer = nBuf;
-        var nFilt = ctx.createBiquadFilter();
-        nFilt.type = 'highpass';
-        nFilt.frequency.value = 3000;
-        var nGain = ctx.createGain();
-        nGain.gain.setValueAtTime(0, now);
-        nGain.gain.linearRampToValueAtTime(CONFIG.audio.stingerVolume * 0.5, now + 0.002);
-        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-        nSrc.connect(nFilt);
-        nFilt.connect(nGain);
-        nGain.connect(master);
-        nSrc.start(now);
-        nSrc.stop(now + 0.15);
+        carrier.start(now);
+        modulator.start(now);
+        carrier.stop(now + dur);
+        modulator.stop(now + dur);
     }
 
-    // --- METAL SCRAPE (high-resonance filter sweep) ---
+    // --- METAL SCRAPE (Comb Filtering) ---
     function playMetalScrape() {
         if (!ready) return;
         var now = ctx.currentTime;
-        var dur = 1.5 + Math.random() * 2;
+        var dur = 2.0 + Math.random() * 1.5;
 
-        // Generate noise
         var len = Math.floor(ctx.sampleRate * dur);
         var buf = ctx.createBuffer(1, len, ctx.sampleRate);
         var d = buf.getChannelData(0);
@@ -417,269 +398,195 @@
         var src = ctx.createBufferSource();
         src.buffer = buf;
 
-        // Very high resonance bandpass — creates metallic ringing
-        var filt = ctx.createBiquadFilter();
-        filt.type = 'bandpass';
-        filt.frequency.value = 2000;
-        filt.Q.value = 30; // extreme resonance
-        // Sweep the frequency upward
-        filt.frequency.exponentialRampToValueAtTime(6000, now + dur * 0.7);
-        filt.frequency.exponentialRampToValueAtTime(1500, now + dur);
+        var combDelay = ctx.createDelay();
+        combDelay.delayTime.setValueAtTime(0.003, now); 
+        combDelay.delayTime.exponentialRampToValueAtTime(0.015, now + dur); 
+        
+        var combFb = ctx.createGain();
+        combFb.gain.value = 0.96; 
+        
+        var damp = ctx.createBiquadFilter();
+        damp.type = 'lowpass';
+        damp.frequency.value = 4000;
 
-        // Second resonant peak
-        var filt2 = ctx.createBiquadFilter();
-        filt2.type = 'bandpass';
-        filt2.frequency.value = 4500;
-        filt2.Q.value = 20;
-        filt2.frequency.exponentialRampToValueAtTime(8000, now + dur * 0.5);
-        filt2.frequency.exponentialRampToValueAtTime(3000, now + dur);
-
-        var merge = ctx.createGain();
-        merge.gain.value = 1;
+        src.connect(combDelay);
+        combDelay.connect(damp);
+        damp.connect(combFb);
+        combFb.connect(combDelay);
 
         var g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(CONFIG.audio.scrapeVolume, now + 0.05);
-        g.gain.setValueAtTime(CONFIG.audio.scrapeVolume, now + dur * 0.8);
+        g.gain.linearRampToValueAtTime(CONFIG.audio.scrapeVolume, now + 0.1);
+        g.gain.setValueAtTime(CONFIG.audio.scrapeVolume, now + dur * 0.7);
         g.gain.linearRampToValueAtTime(0, now + dur);
 
         var pan = ctx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.6;
+        pan.pan.value = (Math.random() - 0.5) * 1.5;
 
-        src.connect(filt);
-        src.connect(filt2);
-        filt.connect(merge);
-        filt2.connect(merge);
-        merge.connect(g);
+        combDelay.connect(g);
         g.connect(pan);
         pan.connect(master);
+        pan.connect(reverbNode);
+
         src.start(now);
         src.stop(now + dur);
     }
 
-    // --- REVERSE SWELL (builds up then cuts off abruptly) ---
+    // --- REVERSE SWELL (Cavernous FM) ---
     function playReverseSwell() {
         if (!ready) return;
         var now = ctx.currentTime;
-        var dur = 2 + Math.random() * 2;
+        var dur = 2.5 + Math.random() * 1.5;
 
-        // Chord cluster that builds
-        var baseFreq = 200 + Math.random() * 300;
-        var oscs = [];
-        var intervals = [1, 1.06, 1.5, 1.59, 2.01]; // dissonant cluster
+        var baseFreq = 80 + Math.random() * 40;
+        
+        var osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = baseFreq;
+
+        var mod = ctx.createOscillator();
+        mod.type = 'sine';
+        mod.frequency.value = baseFreq * 2.14;
+        var modG = ctx.createGain();
+        modG.gain.setValueAtTime(0, now);
+        modG.gain.exponentialRampToValueAtTime(400, now + dur - 0.1);
+        mod.connect(modG);
+        modG.connect(osc.frequency);
 
         var swellGain = ctx.createGain();
-        swellGain.gain.setValueAtTime(0, now);
-        // Exponential build
-        swellGain.gain.linearRampToValueAtTime(0.001, now + 0.01);
+        swellGain.gain.setValueAtTime(0.001, now);
         swellGain.gain.exponentialRampToValueAtTime(CONFIG.audio.sharpVolume * 1.5, now + dur - 0.05);
-        // Abrupt cutoff
         swellGain.gain.setValueAtTime(0, now + dur);
-
-        for (var i = 0; i < intervals.length; i++) {
-            var o = ctx.createOscillator();
-            o.type = i < 2 ? 'sawtooth' : 'sine';
-            o.frequency.value = baseFreq * intervals[i];
-            var oG = ctx.createGain();
-            oG.gain.value = 0.3;
-            o.connect(oG);
-            oG.connect(swellGain);
-            o.start(now);
-            o.stop(now + dur);
-            oscs.push(o);
-        }
 
         var lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.setValueAtTime(400, now);
-        lp.frequency.exponentialRampToValueAtTime(8000, now + dur - 0.1);
+        lp.frequency.setValueAtTime(100, now);
+        lp.frequency.exponentialRampToValueAtTime(6000, now + dur - 0.1);
 
+        osc.connect(swellGain);
         swellGain.connect(lp);
         lp.connect(master);
+        lp.connect(reverbNode);
+
+        osc.start(now); mod.start(now);
+        osc.stop(now + dur); mod.stop(now + dur);
     }
 
-    // --- IMPACT HIT (sudden low-frequency slam) ---
+    // --- IMPACT HIT (Deep room boom) ---
     function playImpact() {
         if (!ready) return;
         var now = ctx.currentTime;
 
-        // Sub-bass impact
         var o = ctx.createOscillator();
         o.type = 'sine';
-        o.frequency.setValueAtTime(80, now);
-        o.frequency.exponentialRampToValueAtTime(15, now + 0.3);
+        o.frequency.setValueAtTime(120, now);
+        o.frequency.exponentialRampToValueAtTime(10, now + 0.4);
 
         var g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(CONFIG.audio.impactVolume, now + 0.005);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+        g.gain.linearRampToValueAtTime(CONFIG.audio.impactVolume, now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
 
-        // Distortion for crunch
-        var waveshaper = ctx.createWaveShaper();
-        var curve = new Float32Array(256);
-        for (var i = 0; i < 256; i++) {
-            var x = (i / 128) - 1;
-            curve[i] = (Math.PI + 3) * x / (Math.PI + 3 * Math.abs(x));
-        }
-        waveshaper.curve = curve;
+        var shaper = ctx.createWaveShaper();
+        shaper.curve = new Float32Array([-0.5, 0, 0.5]); 
 
-        o.connect(waveshaper);
-        waveshaper.connect(g);
-        g.connect(master);
-        o.start(now);
-        o.stop(now + 0.85);
+        o.connect(shaper); shaper.connect(g); g.connect(master); g.connect(reverbNode);
+        o.start(now); o.stop(now + 1.2);
 
-        // Noise transient
-        var nLen = Math.floor(ctx.sampleRate * 0.08);
+        var nLen = Math.floor(ctx.sampleRate * 0.15);
         var nBuf = ctx.createBuffer(1, nLen, ctx.sampleRate);
         var nD = nBuf.getChannelData(0);
-        for (var i2 = 0; i2 < nLen; i2++) nD[i2] = Math.random() * 2 - 1;
+        for (var i = 0; i < nLen; i++) nD[i] = Math.random() * 2 - 1;
 
         var nSrc = ctx.createBufferSource();
         nSrc.buffer = nBuf;
         var nG = ctx.createGain();
-        nG.gain.setValueAtTime(CONFIG.audio.impactVolume * 0.6, now);
-        nG.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        nG.gain.setValueAtTime(CONFIG.audio.impactVolume * 0.8, now);
+        nG.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
         var nLP = ctx.createBiquadFilter();
-        nLP.type = 'lowpass';
-        nLP.frequency.value = 800;
+        nLP.type = 'lowpass'; nLP.frequency.value = 400;
 
-        nSrc.connect(nLP);
-        nLP.connect(nG);
-        nG.connect(master);
-        nSrc.start(now);
-        nSrc.stop(now + 0.08);
+        nSrc.connect(nLP); nLP.connect(nG); nG.connect(master); nG.connect(reverbNode);
+        nSrc.start(now); nSrc.stop(now + 0.15);
     }
 
-    // --- LOW RUMBLE (enhanced with harmonics) ---
+    // --- LOW RUMBLE ---
     function playRumble(duration) {
         if (!ready) return;
         duration = duration || 4;
         var now = ctx.currentTime;
 
-        // Primary sub-bass
-        var o = ctx.createOscillator();
-        o.type = 'sine';
-        o.frequency.value = 20;
+        var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 25;
+        var lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.5;
+        var lfoG = ctx.createGain(); lfoG.gain.value = 10;
+        lfo.connect(lfoG); lfoG.connect(o.frequency); lfo.start(now); lfo.stop(now + duration);
 
-        // LFO modulation
-        var lfo2 = ctx.createOscillator();
-        lfo2.type = 'sine';
-        lfo2.frequency.value = 0.3;
-        var lfoG = ctx.createGain();
-        lfoG.gain.value = 8;
-        lfo2.connect(lfoG);
-        lfoG.connect(o.frequency);
-        lfo2.start(now);
-
-        // Harmonic overtone for body
-        var harm = ctx.createOscillator();
-        harm.type = 'triangle';
-        harm.frequency.value = 40;
-        var hG = ctx.createGain();
-        hG.gain.value = 0.3;
-        harm.connect(hG);
-
-        // Second detuned overtone
-        var harm2 = ctx.createOscillator();
-        harm2.type = 'sine';
-        harm2.frequency.value = 43;
-        var h2G = ctx.createGain();
-        h2G.gain.value = 0.15;
-        harm2.connect(h2G);
-
+        var o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = 35;
+        
         var g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.18, now + duration * 0.2);
-        g.gain.setValueAtTime(0.18, now + duration * 0.7);
+        g.gain.linearRampToValueAtTime(0.25, now + duration * 0.3);
+        g.gain.setValueAtTime(0.25, now + duration * 0.7);
         g.gain.linearRampToValueAtTime(0, now + duration);
 
-        o.connect(g);
-        hG.connect(g);
-        h2G.connect(g);
+        o.connect(g); o2.connect(g);
         g.connect(master);
-        o.start(now);
-        harm.start(now);
-        harm2.start(now);
-        o.stop(now + duration);
-        harm.stop(now + duration);
-        harm2.stop(now + duration);
-        lfo2.stop(now + duration);
-    }
-
-    // --- BREATH SOUNDS ---
-    function scheduleBreath() {
-        if (!ready) return;
-        var delay = 15000 + Math.random() * 25000;
-        setTimeout(function () {
-            playBreath();
-            scheduleBreath();
-        }, delay);
+        g.connect(reverbNode);
+        
+        o.start(now); o2.start(now);
+        o.stop(now + duration); o2.stop(now + duration);
     }
 
     // --- SUDDEN SILENCE ---
     function playSuddenSilence() {
         if (!ready || !master) return;
         var now = ctx.currentTime;
-        // Kill all drone nodes immediately
-        droneNodes.forEach(function(node) {
-            try { node.stop(now); } catch(e) {}
-        });
+        droneNodes.forEach(function(node) { try { node.stop(now); } catch(e) {} });
         droneNodes = [];
-        // Abruptly ramp master to 0
         master.gain.cancelScheduledValues(now);
         master.gain.setValueAtTime(master.gain.value, now);
         master.gain.linearRampToValueAtTime(0, now + 0.01);
         
-        // Restore after a few seconds
         setTimeout(function() {
             master.gain.linearRampToValueAtTime(CONFIG.audio.masterVolume, ctx.currentTime + 2);
             startDrone();
         }, 3000 + Math.random() * 2000);
     }
 
+    // --- BREATH SOUNDS ---
+    function scheduleBreath() {
+        if (!ready) return;
+        var delay = 15000 + Math.random() * 25000;
+        setTimeout(function () { playBreath(); scheduleBreath(); }, delay);
+    }
+
     function playBreath() {
         if (!ready || document.hidden) return;
         var now = ctx.currentTime;
-        var dur = 2 + Math.random() * 2;
+        var dur = 2.5 + Math.random() * 2;
         var len = Math.floor(ctx.sampleRate * dur);
         var buf = ctx.createBuffer(1, len, ctx.sampleRate);
         var d = buf.getChannelData(0);
 
-        // Inhale-exhale pattern via amplitude modulation
         for (var i = 0; i < len; i++) {
             var t = i / len;
-            // Breath envelope: inhale (0-0.4), pause (0.4-0.5), exhale (0.5-1.0)
             var env;
-            if (t < 0.4) {
-                env = Math.sin(t / 0.4 * Math.PI * 0.5);
-            } else if (t < 0.5) {
-                env = Math.cos((t - 0.4) / 0.1 * Math.PI * 0.5) * 0.3;
-            } else {
-                env = Math.sin((t - 0.5) / 0.5 * Math.PI) * 0.8;
-            }
+            if (t < 0.4) env = Math.sin(t / 0.4 * Math.PI * 0.5);
+            else if (t < 0.5) env = Math.cos((t - 0.4) / 0.1 * Math.PI * 0.5) * 0.2;
+            else env = Math.sin((t - 0.5) / 0.5 * Math.PI) * 0.8;
             d[i] = (Math.random() * 2 - 1) * env;
         }
 
-        var src = ctx.createBufferSource();
-        src.buffer = buf;
+        var src = ctx.createBufferSource(); src.buffer = buf;
 
-        // Multiple formant filters for realistic breath
-        var f1 = ctx.createBiquadFilter();
-        f1.type = 'bandpass';
-        f1.frequency.value = 400;
-        f1.Q.value = 1.5;
+        var throatDelay = ctx.createDelay();
+        throatDelay.delayTime.value = 0.005; 
+        var throatFb = ctx.createGain(); throatFb.gain.value = 0.7;
+        throatDelay.connect(throatFb); throatFb.connect(throatDelay);
+        src.connect(throatDelay);
 
-        var f2 = ctx.createBiquadFilter();
-        f2.type = 'bandpass';
-        f2.frequency.value = 1200;
-        f2.Q.value = 2;
-
-        var hp = ctx.createBiquadFilter();
-        hp.type = 'highpass';
-        hp.frequency.value = 150;
-
-        var merge = ctx.createGain();
+        var f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 350; f1.Q.value = 1.2;
+        var f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1100; f2.Q.value = 2;
 
         var g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
@@ -688,69 +595,52 @@
         g.gain.linearRampToValueAtTime(0, now + dur);
 
         var pan = ctx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.8;
+        pan.pan.value = (Math.random() - 0.5) * 1.5;
 
-        src.connect(f1);
-        src.connect(f2);
-        f1.connect(merge);
-        f2.connect(merge);
-        merge.connect(hp);
-        hp.connect(g);
+        throatDelay.connect(f1); throatDelay.connect(f2);
+        f1.connect(g); f2.connect(g);
         g.connect(pan);
         pan.connect(master);
-        src.start(now);
-        src.stop(now + dur);
+        pan.connect(reverbNode); 
+        
+        src.start(now); src.stop(now + dur);
     }
 
     // --- DISSONANT STRING CHORD ---
     function playDissonantChord() {
         if (!ready) return;
         var now = ctx.currentTime;
-        var dur = 3 + Math.random() * 3;
+        var dur = 4 + Math.random() * 3;
 
-        // Minor 2nd + tritone chord cluster
-        var base = 180 + Math.random() * 120;
-        var intervals = [1, 16 / 15, Math.sqrt(2), 15 / 8]; // m2, tritone, major7
+        var base = 150 + Math.random() * 100;
+        var intervals = [1, 1.059, 1.414, 1.887]; 
         var chordGain = ctx.createGain();
         chordGain.gain.setValueAtTime(0, now);
-        chordGain.gain.linearRampToValueAtTime(CONFIG.audio.sharpVolume, now + 0.8);
+        chordGain.gain.linearRampToValueAtTime(CONFIG.audio.sharpVolume, now + 1.2);
         chordGain.gain.setValueAtTime(CONFIG.audio.sharpVolume, now + dur * 0.6);
         chordGain.gain.linearRampToValueAtTime(0, now + dur);
 
         for (var i = 0; i < intervals.length; i++) {
             var o = ctx.createOscillator();
-            o.type = 'sawtooth';
+            o.type = 'triangle'; 
             o.frequency.value = base * intervals[i];
-            // Slight vibrato
-            var vib = ctx.createOscillator();
-            vib.type = 'sine';
-            vib.frequency.value = 4 + Math.random() * 3;
-            var vibG = ctx.createGain();
-            vibG.gain.value = 2 + Math.random() * 3;
-            vib.connect(vibG);
-            vibG.connect(o.frequency);
-            vib.start(now);
-            vib.stop(now + dur);
+            
+            var vib = ctx.createOscillator(); vib.type = 'sine'; vib.frequency.value = 3 + Math.random() * 2;
+            var vibG = ctx.createGain(); vibG.gain.value = base * intervals[i] * 0.01;
+            vib.connect(vibG); vibG.connect(o.frequency);
+            vib.start(now); vib.stop(now + dur);
 
-            var oG = ctx.createGain();
-            oG.gain.value = 0.2;
-            o.connect(oG);
-            oG.connect(chordGain);
-            o.start(now);
-            o.stop(now + dur);
+            var oG = ctx.createGain(); oG.gain.value = 0.25;
+            o.connect(oG); oG.connect(chordGain);
+            o.start(now); o.stop(now + dur);
         }
 
-        // Lowpass to soften
-        var lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = 2000;
+        var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500;
+        var pan = ctx.createStereoPanner(); pan.pan.value = (Math.random() - 0.5) * 1.2;
 
-        var pan = ctx.createStereoPanner();
-        pan.pan.value = (Math.random() - 0.5) * 1.2;
-
-        chordGain.connect(lp);
-        lp.connect(pan);
+        chordGain.connect(lp); lp.connect(pan);
         pan.connect(master);
+        pan.connect(reverbNode); 
     }
 
     // =========================================================================
