@@ -59,26 +59,30 @@
     var tension = 0; // 0 to 1 scale for audio intensity
 
     function initAudio() {
-        if (ready) return;
+        // If context exists but is suspended, try to resume it (needs user gesture)
+        if (ctx) {
+            if (ctx.state === 'suspended') ctx.resume();
+            return;
+        }
         try {
             ctx = new (window.AudioContext || window.webkitAudioContext)();
             master = ctx.createGain();
             master.gain.value = CONFIG.audio.masterVolume;
             master.connect(ctx.destination);
-            
+
             // --- SPATIAL REVERB BUS (Creates a vast, cavernous environment) ---
             reverbNode = ctx.createGain();
             reverbNode.gain.value = 0.6; // Wet send level
-            
+
             var delayL = ctx.createDelay(); delayL.delayTime.value = 0.27;
             var delayR = ctx.createDelay(); delayR.delayTime.value = 0.37;
             var fbL = ctx.createGain(); fbL.gain.value = 0.45;
             var fbR = ctx.createGain(); fbR.gain.value = 0.45;
             var crossL = ctx.createGain(); crossL.gain.value = 0.25;
             var crossR = ctx.createGain(); crossR.gain.value = 0.25;
-            
-            var damp = ctx.createBiquadFilter(); 
-            damp.type = 'lowpass'; 
+
+            var damp = ctx.createBiquadFilter();
+            damp.type = 'lowpass';
             damp.frequency.value = 2500;
 
             reverbNode.connect(damp);
@@ -866,7 +870,11 @@
     // --- TEXT BLEED ---
     function textBleed(el) {
         el.classList.add('horror-text-bleed');
-        setTimeout(function () { el.classList.remove('horror-text-bleed'); }, 4000);
+        el.style.animation = '';  // clear inline override so !important class wins
+        setTimeout(function () {
+            el.classList.remove('horror-text-bleed');
+            el.style.animation = 'none';  // prevent fadeIn from restarting
+        }, 4000);
     }
 
     // --- COLOR SHIFT (brief red/blue color wash) ---
@@ -1329,6 +1337,17 @@
         setupStaringEffect();
 
         setTimeout(createAudioPrompt, 1200);
+
+        // After all initial CSS fade-in animations complete, kill them so
+        // they can never restart (e.g. when textBleed removes its class,
+        // the browser would otherwise re-trigger fadeIn from opacity:0).
+        // The !important on .horror-text-bleed still wins for bleed effects.
+        setTimeout(function() {
+            var els = document.querySelectorAll('h1, h2, .subtitle, article p, .container p');
+            for (var i = 0; i < els.length; i++) {
+                els[i].style.animation = 'none';
+            }
+        }, 3500);
     }
 
     if (document.readyState === 'loading') {
