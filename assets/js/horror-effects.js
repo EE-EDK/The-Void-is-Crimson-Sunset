@@ -117,16 +117,20 @@
         droneGain.gain.value = 0;
         droneGain.connect(master);
         droneGain.connect(reverbNode); // Send to cavern
-        droneGain.gain.linearRampToValueAtTime(CONFIG.audio.droneBase, ctx.currentTime + 10);
+        droneGain.gain.linearRampToValueAtTime(CONFIG.audio.droneBase, ctx.currentTime + 3);
 
-        // Sub-bass foundation (The "Void" hum)
+        // Sub-bass foundation (The "Void" hum) - headphones only
         createDroneLayer(42, 'sine', 0.4, 0.03, 2);
-        
+
         // Background Dissonance: Aleatoric Cluster (Smoother waves)
-        createDroneLayer(44.5, 'triangle', 0.15, 0.05, 1.5); 
-        createDroneLayer(59.5, 'sine', 0.12, 0.02, 1);   
-        createDroneLayer(89, 'triangle', 0.04, 0.08, 0.5);   
-        
+        createDroneLayer(44.5, 'triangle', 0.15, 0.05, 1.5);
+        createDroneLayer(59.5, 'sine', 0.12, 0.02, 1);
+        createDroneLayer(89, 'triangle', 0.04, 0.08, 0.5);
+
+        // Mid-range presence (audible on phone speakers)
+        createDroneLayer(220, 'sine', 0.06, 0.04, 3);
+        createDroneLayer(330, 'triangle', 0.03, 0.02, 2);
+
         // High ghost tones (The "Crimson" shimmer)
         createDroneLayer(15500, 'sine', 0.01, 0.01, 0.1);
         createDroneLayer(15523, 'sine', 0.008, 0.012, 0.08);
@@ -143,8 +147,8 @@
 
         var bp = ctx.createBiquadFilter();
         bp.type = 'bandpass';
-        bp.frequency.value = 180;
-        bp.Q.value = 0.4; // Softer Q for more natural wind
+        bp.frequency.value = 300;
+        bp.Q.value = 0.3; // Wider band centered higher for phone audibility
 
         var noiseLfo = ctx.createOscillator();
         noiseLfo.type = 'sine';
@@ -157,7 +161,7 @@
         droneNodes.push(noiseLfo);
 
         var nGain = ctx.createGain();
-        nGain.gain.value = 0.025;
+        nGain.gain.value = 0.06;
 
         noise.connect(bp);
         bp.connect(nGain);
