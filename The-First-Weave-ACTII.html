@@ -32,20 +32,19 @@
     <link rel="stylesheet" href="./assets/css/act2-custom.css">
 
     
+    
+    <!-- Updated Three.js r160 with SRI -->
+    
     <script>
         window.handleThreeJSLoadError = function() {
             console.error('Three.js failed to load. Using fallback.');
-            document.body.style.backgroundColor = '#0a0a0a';
+            document.body.style.backgroundColor = '#050505';
             document.body.style.backgroundImage = 'radial-gradient(circle, #1a0a0a, #000)';
+            const canvas = document.getElementById('bg-canvas') || document.getElementById('three-background');
+            if (canvas) canvas.style.display = 'none';
         };
     </script>
-    <!-- Updated Three.js r160 with SRI -->
-    <script
-        src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"
-        
-        
-        referrerpolicy="no-referrer"
-        onerror="window.handleThreeJSLoadError()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js" onerror="window.handleThreeJSLoadError()"></script>
 
     <!-- Horror Effects Engine -->
     <script src="./assets/js/horror-effects.js" defer></script>
