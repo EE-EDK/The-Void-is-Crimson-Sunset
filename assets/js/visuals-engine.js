@@ -336,37 +336,6 @@
                     vec3 ringColor = mix(vec3(1.0, 0.5, 0.1), vec3(1.0, 0.9, 0.7), photonRing);
                     col += ringColor * photonRing * 1.37;
 
-                    // Gravitational lensing — far-side disc bent over the shadow
-                    // Crescent hugging the shadow edge, strongest at top
-                    float lensAngle = atan(uv.y, uv.x);
-
-                    // Band at the shadow boundary radius
-                    float lensRadius = 0.38;
-                    float lensBandRaw = smoothstep(0.06, 0.0, abs(dist - lensRadius));
-
-                    // Crescent mask: strongest at top, fades toward sides
-                    // uv.y/dist = cosine of angle from top, raised to shape the crescent
-                    float crescentFactor = max(0.0, uv.y / max(dist, 0.001));
-                    float topCresc = pow(crescentFactor, 1.5) * 1.2;
-
-                    // Bottom crescent (underside lensing), dimmer
-                    float botCrescentFactor = max(0.0, -uv.y / max(dist, 0.001));
-                    float botCresc = pow(botCrescentFactor, 2.0) * 0.4;
-
-                    float crescentMask = topCresc + botCresc;
-
-                    // Doppler beaming — left side brighter
-                    float doppler = 0.65 + 0.35 * sin(lensAngle + 1.57);
-
-                    // Texture with noise for organic feel
-                    float lensNoise = noise(vec2(lensAngle * 10.0 + u_time * 0.12, dist * 8.0));
-                    float lensDetail = 0.75 + lensNoise * 0.25;
-
-                    // Hot orange-white color
-                    vec3 lensColor = mix(vec3(0.9, 0.25, 0.02), vec3(1.0, 0.75, 0.35), lensNoise);
-
-                    col += lensColor * lensBandRaw * crescentMask * doppler * lensDetail * 1.0;
-
                     // Leaking / Bleeding elements
                     float leak = pow(fbm(uv * rot(u_time * 0.1) * 3.0), 3.0) * density;
                     if (dist < 0.6) {
