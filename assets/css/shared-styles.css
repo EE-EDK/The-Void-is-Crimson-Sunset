@@ -138,10 +138,15 @@ body {
     padding: var(--container-padding);
     position: relative;
     z-index: 1;
-    /* Added for readability against high-fi WebGL background */
+}
+
+article {
+    /* Glassmorphism moved here so it only affects story content */
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    padding: 40px;
+    border-radius: 8px;
     border-left: 1px solid rgba(139, 0, 0, 0.1);
     border-right: 1px solid rgba(139, 0, 0, 0.1);
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
