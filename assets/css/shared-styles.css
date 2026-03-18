@@ -138,6 +138,13 @@ body {
     padding: var(--container-padding);
     position: relative;
     z-index: 1;
+    /* Added for readability against high-fi WebGL background */
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-left: 1px solid rgba(139, 0, 0, 0.1);
+    border-right: 1px solid rgba(139, 0, 0, 0.1);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
 }
 
 /* ===== TYPOGRAPHY ===== */
@@ -148,7 +155,7 @@ h1 {
     text-align: center;
     margin-bottom: 15px;
     color: #ffffff;
-    text-shadow: 0 0 20px var(--primary-glow);
+    text-shadow: 0 0 20px var(--primary-glow), 0 0 5px #000;
     letter-spacing: 2px;
     animation: fadeIn 2s ease-in;
 }
@@ -158,7 +165,8 @@ h1 {
     text-align: center;
     font-style: italic;
     margin-bottom: var(--section-gap);
-    color: #aaa;
+    color: #eee; /* Lightened for contrast */
+    text-shadow: 0 0 5px #000;
     font-size: var(--font-size-subtitle);
     animation: fadeIn 2s ease-in 0.5s backwards;
 }
@@ -168,7 +176,7 @@ h2 {
     font-size: clamp(18pt, 5vw, var(--font-size-section));
     margin: 50px 0 30px 0;
     color: var(--primary-light);
-    text-shadow: 0 0 15px var(--primary-glow);
+    text-shadow: 0 0 15px var(--primary-glow), 0 0 5px #000;
     letter-spacing: 3px;
     opacity: 0;
     animation: slideIn var(--fade-duration) ease-out forwards;
@@ -178,7 +186,10 @@ h2 {
 p {
     margin-bottom: var(--paragraph-gap);
     text-align: left;
+    color: #f0f0f0; /* Slightly brighter for better contrast */
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 1px 1px 2px rgba(0, 0, 0, 1);
     opacity: 0;
+    line-height: 1.7; /* Better readability */
     animation: fadeInText var(--fade-duration) ease-out forwards;
 }
 
