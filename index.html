@@ -7,7 +7,7 @@
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="An interactive horror narrative exploring consciousness, sacrifice, and the space between realities. A three-act cosmic horror story.">
-    <meta name="keywords" content="interactive fiction, horror story, cosmic horror, web fiction, narrative experience">
+    <meta name="keywords" content="interactive fiction, horror story, cosmic horror, web fiction, narrative experience, three-act story">
     <meta name="author" content="EE-EDK">
 
     <!-- Open Graph / Facebook -->
@@ -182,6 +182,13 @@
         onerror="handleThreeJSLoadError()"></script>
 </head>
 <body>
+    <!-- Fallback for JavaScript disabled -->
+    <noscript>
+        <div style="background: red; color: white; padding: 20px; text-align: center; position: fixed; top: 0; width: 100%; z-index: 100000;">
+            This interactive narrative requires JavaScript to function properly. Please enable it to experience the story.
+        </div>
+    </noscript>
+
     <!-- Accessibility: Skip to content link -->
     <a href="#main-content" class="skip-to-content">Skip to content</a>
 

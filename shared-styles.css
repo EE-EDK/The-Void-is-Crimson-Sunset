@@ -556,7 +556,7 @@ body.fade-out-to-next {
 
 /* Screen flicker — rapid brightness changes */
 .horror-flicker {
-    filter: brightness(0.4) contrast(1.3) !important;
+    filter: brightness(0.7) contrast(1.1) !important;
 }
 
 /* Text bleed — dramatic red shadow that pulses on paragraphs */
@@ -755,4 +755,61 @@ body.fade-out-to-next {
         color: black;
         text-shadow: none;
     }
+}
+
+/* ===== NEW SUBTLE HORROR EFFECTS ===== */
+
+/* Peripheral shadow — fleeting dark shape in periphery */
+#horror-peripheral-shadow {
+    position: fixed;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 9993;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    filter: blur(40px);
+}
+
+/* Twitching word — subtle vibration */
+.horror-twitch-word {
+    display: inline-block;
+    animation: horror-word-vibrate 0.15s linear infinite;
+    color: var(--primary-light);
+    text-shadow: 0 0 5px var(--primary-glow);
+}
+
+/* Panic state typography for emotional distress */
+.horror-panic {
+    letter-spacing: -1px;
+    font-style: italic;
+    line-height: 1.2;
+}
+
+@keyframes horror-word-vibrate {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(0.5px, -0.5px); }
+    50%  { transform: translate(-0.5px, 0.5px); }
+    75%  { transform: translate(0.5px, 0.5px); }
+    100% { transform: translate(0, 0); }
+}
+
+/* Narrative Pause — Forces the reader to scroll through empty space, building tension */
+.narrative-pause {
+    height: 35vh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+/* Optional breathing animation — can be applied manually to specific blocks */
+.horror-breathe {
+    animation: horror-breathe-anim 8s ease-in-out infinite;
+}
+
+@keyframes horror-breathe-anim {
+    0%, 100% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.002) translateY(0.5px); }
 }

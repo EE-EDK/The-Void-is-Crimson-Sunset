@@ -32,20 +32,20 @@
             binauralVolume: 0.03,
         },
         visual: {
-            glitchDuration: 400,
-            scrambleDuration: 1200,
-            vignetteBase: 0.15,
-            vignetteMax: 0.80,
-            flickerCount: 5,
-            breathingEnabled: true,
+            glitchDuration: 300,
+            scrambleDuration: 1000,
+            vignetteBase: 0.12,
+            vignetteMax: 0.70,
+            flickerCount: 3,
+            breathingEnabled: false,
             grainEnabled: true,
             chromaticEnabled: true,
         },
         timing: {
-            whisperRange: [8000, 22000],
-            ambientRange: [6000, 18000],
-            onLoadDelay: 2500,
-            breathCycle: 8000,
+            whisperRange: [12000, 35000],
+            ambientRange: [15000, 45000],
+            onLoadDelay: 4000,
+            breathCycle: 10000,
         },
     };
 
@@ -659,6 +659,27 @@
         }, delay);
     }
 
+    // --- SUDDEN SILENCE ---
+    function playSuddenSilence() {
+        if (!ready || !master) return;
+        var now = ctx.currentTime;
+        // Kill all drone nodes immediately
+        droneNodes.forEach(function(node) {
+            try { node.stop(now); } catch(e) {}
+        });
+        droneNodes = [];
+        // Abruptly ramp master to 0
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(0, now + 0.01);
+        
+        // Restore after a few seconds
+        setTimeout(function() {
+            master.gain.linearRampToValueAtTime(CONFIG.audio.masterVolume, ctx.currentTime + 2);
+            startDrone();
+        }, 3000 + Math.random() * 2000);
+    }
+
     function playBreath() {
         if (!ready || document.hidden) return;
         var now = ctx.currentTime;
@@ -874,16 +895,16 @@
         // Content shift
         var main = document.querySelector('main') || document.querySelector('.container');
         if (main) {
-            var shift = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 5);
+            var shift = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2);
             main.style.transition = 'none';
             main.style.transform = 'translateX(' + shift + 'px)';
             setTimeout(function () {
-                main.style.transform = 'translateX(' + (-shift * 0.6) + 'px)';
+                main.style.transform = 'translateX(' + (-shift * 0.5) + 'px)';
                 setTimeout(function () {
                     main.style.transition = 'transform 0.4s ease';
                     main.style.transform = '';
-                }, 70);
-            }, 90);
+                }, 60);
+            }, 80);
         }
 
         // Red tint flash
@@ -1065,8 +1086,8 @@
                         if (ready) playReverseSwell();
                         break;
                     case 'glitch':
-                        glitchEffect();
                         if (ready) playSharpTone();
+                        setTimeout(glitchEffect, 150); // 150ms delay to let audio lead
                         break;
                     case 'heartbeat':
                         if (ready) playHeartbeat();
@@ -1103,8 +1124,10 @@
                             playRumble(5);
                             playImpact();
                         }
-                        glitchEffect();
-                        pulseVignette(0.6, 5000);
+                        setTimeout(function() {
+                            glitchEffect();
+                            pulseVignette(0.6, 5000);
+                        }, 300); // 300ms delay for deep rumble to be felt first
                         break;
                     case 'bleed':
                         textBleed(el);
@@ -1149,31 +1172,33 @@
         setTimeout(function () {
             if (!document.hidden) {
                 var r = Math.random();
-                if (r < 0.13) {
+                // Substantially increased "nothing" chance for pacing
+                if (r < 0.40) {
+                    // 40% chance: nothing
+                } else if (r < 0.46) {
                     screenFlicker();
-                } else if (r < 0.24) {
+                } else if (r < 0.52) {
                     glitchEffect();
-                } else if (r < 0.33) {
-                    pulseVignette(0.55, 1500);
-                } else if (r < 0.42) {
+                } else if (r < 0.58) {
+                    pulseVignette(0.45, 1200);
+                } else if (r < 0.64) {
                     colorShift();
-                } else if (r < 0.52 && ready) {
+                } else if (r < 0.72 && ready) {
                     playWhisper();
-                } else if (r < 0.60 && ready) {
+                } else if (r < 0.78 && ready) {
                     playMetalScrape();
-                } else if (r < 0.68 && ready) {
+                } else if (r < 0.84 && ready) {
                     playBreath();
-                } else if (r < 0.76 && ready) {
+                } else if (r < 0.90 && ready) {
                     playDissonantChord();
-                } else if (r < 0.82) {
-                    chromaticPulse(350);
-                } else if (r < 0.90) {
+                } else if (r < 0.94) {
+                    chromaticPulse(300);
+                } else {
                     var ps = document.querySelectorAll('article p, .container p');
                     if (ps.length > 0) {
                         textBleed(ps[Math.floor(Math.random() * ps.length)]);
                     }
                 }
-                // 10% chance: nothing (keeps unpredictable)
             }
             scheduleAmbientEvent();
         }, delay);
@@ -1191,6 +1216,9 @@
         scrollIntensity = Math.min(pct * 1.4, 1);
         setVignetteIntensity(CONFIG.visual.vignetteBase + scrollIntensity * 0.2);
         setDroneIntensity(scrollIntensity * 0.5);
+        // Adjust animation durations based on intensity
+        CONFIG.visual.glitchDuration = 300 / (1 + scrollIntensity);
+        CONFIG.visual.scrambleDuration = 1000 / (1 + scrollIntensity);
     }
 
     var sTicking = false;
@@ -1249,26 +1277,149 @@
     // ON-LOAD EFFECTS — immediate visual impact
     // =========================================================================
     function onLoadEffects() {
-        // Brief vignette surge
-        setVignetteIntensity(0.5);
+        // Subtle vignette fade-in
+        setVignetteIntensity(0.3);
         setTimeout(function () {
             setVignetteIntensity(CONFIG.visual.vignetteBase);
-        }, 2000);
+        }, 3000);
 
-        // Delayed first flicker
-        setTimeout(function () {
-            screenFlicker();
-        }, CONFIG.timing.onLoadDelay);
+        // Rare chance of a single flicker on load - REMOVED to prioritize terror (anticipation) over immediate reveal
+        /*
+        if (Math.random() < 0.3) {
+            setTimeout(function () {
+                screenFlicker();
+            }, CONFIG.timing.onLoadDelay);
+        }
+        */
+    }
 
-        // Delayed glitch
-        setTimeout(function () {
-            glitchEffect();
-        }, CONFIG.timing.onLoadDelay + 3000);
+    // --- PERIPHERAL SHADOWS (fleeting shapes at viewport edges) ---
+    function setupPeripheralShadows() {
+        if ('ontouchstart' in window) return;
 
-        // Chromatic pulse
-        setTimeout(function () {
-            chromaticPulse(500);
-        }, CONFIG.timing.onLoadDelay + 1500);
+        var shadow = document.createElement('div');
+        shadow.id = 'horror-peripheral-shadow';
+        shadow.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(shadow);
+
+        var lastMove = Date.now();
+        document.addEventListener('mousemove', function (e) {
+            lastMove = Date.now();
+            // Shadow stays in the periphery, away from the cursor
+            var x = e.clientX > window.innerWidth / 2 ? 0 : window.innerWidth;
+            var y = e.clientY > window.innerHeight / 2 ? 0 : window.innerHeight;
+            
+            // Only show if cursor is moving fast or at intervals
+            if (Math.random() < 0.05) {
+                shadow.style.left = x + 'px';
+                shadow.style.top = y + 'px';
+                shadow.style.opacity = '0.15';
+                setTimeout(function () { shadow.style.opacity = '0'; }, 800);
+            }
+        });
+    }
+
+    // --- WORD TWITCH (subtle tremors on random words) ---
+    function setupWordTwitch() {
+        var ps = document.querySelectorAll('article p, .container p');
+        if (!ps.length) return;
+
+        function twitch() {
+            var p = ps[Math.floor(Math.random() * ps.length)];
+            
+            // Use TreeWalker to find a valid text node to avoid destroying HTML tags
+            var textNodes = [];
+            var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null, false);
+            var node;
+            while (node = walker.nextNode()) {
+                if (node.textContent.trim().length > 10) {
+                    textNodes.push(node);
+                }
+            }
+
+            if (textNodes.length === 0) {
+                setTimeout(twitch, 5000 + Math.random() * 10000);
+                return;
+            }
+
+            var targetNode = textNodes[Math.floor(Math.random() * textNodes.length)];
+            var words = targetNode.textContent.split(' ');
+            var validIndices = [];
+            
+            for (var i = 0; i < words.length; i++) {
+                if (words[i].length >= 4 && /^[a-zA-Z]+$/.test(words[i].trim())) {
+                    validIndices.push(i);
+                }
+            }
+
+            if (validIndices.length === 0) {
+                setTimeout(twitch, 5000 + Math.random() * 10000);
+                return;
+            }
+
+            var idx = validIndices[Math.floor(Math.random() * validIndices.length)];
+            var originalWord = words[idx];
+            
+            // Create a span element to hold the twitching word
+            var span = document.createElement('span');
+            span.className = 'horror-twitch-word';
+            span.textContent = originalWord;
+
+            // Reconstruct the text content around the new span
+            var beforeText = words.slice(0, idx).join(' ') + (idx > 0 ? ' ' : '');
+            var afterText = (idx < words.length - 1 ? ' ' : '') + words.slice(idx + 1).join(' ');
+
+            var parent = targetNode.parentNode;
+            var beforeNode = document.createTextNode(beforeText);
+            var afterNode = document.createTextNode(afterText);
+
+            parent.insertBefore(beforeNode, targetNode);
+            parent.insertBefore(span, targetNode);
+            parent.insertBefore(afterNode, targetNode);
+            parent.removeChild(targetNode);
+
+            setTimeout(function () {
+                if (span.parentNode) {
+                    // Revert the DOM back to a single text node
+                    var combinedText = beforeNode.textContent + span.textContent + afterNode.textContent;
+                    var newNode = document.createTextNode(combinedText);
+                    parent.insertBefore(newNode, beforeNode);
+                    parent.removeChild(beforeNode);
+                    parent.removeChild(span);
+                    parent.removeChild(afterNode);
+                }
+                setTimeout(twitch, 8000 + Math.random() * 15000);
+            }, 1200);
+        }
+        
+        // Initial delay
+        setTimeout(twitch, 10000);
+    }
+
+    // --- STARING EFFECT (words change color when hovered for long) ---
+    function setupStaringEffect() {
+        var ps = document.querySelectorAll('article p, .container p');
+
+        for (var i = 0; i < ps.length; i++) {
+            (function(p) {
+                var timer = null;
+                p.addEventListener('mouseenter', function (e) {
+                    timer = setTimeout(function () {
+                        p.style.transition = 'color 4s ease';
+                        p.style.color = '#500'; // dark blood red
+                        if (ready && Math.random() < 0.3) playWhisper();
+                    }, 3000);
+                });
+
+                p.addEventListener('mouseleave', function (e) {
+                    clearTimeout(timer);
+                    if (p.style.color === 'rgb(85, 0, 0)' || p.style.color === '#500') {
+                        p.style.transition = 'color 2s ease';
+                        p.style.color = '';
+                    }
+                });
+            })(ps[i]);
+        }
     }
 
     // =========================================================================
@@ -1283,6 +1434,11 @@
         scheduleAmbientEvent();
         onLoadEffects();
         startScreenBreathing();
+        
+        // New subtle interactions
+        setupPeripheralShadows();
+        setupWordTwitch();
+        setupStaringEffect();
 
         setTimeout(createAudioPrompt, 1200);
     }
@@ -1310,6 +1466,7 @@
         bleed: textBleed,
         colorShift: colorShift,
         chromaticPulse: chromaticPulse,
+        silence: playSuddenSilence,
         setDroneIntensity: setDroneIntensity,
         setVignetteIntensity: setVignetteIntensity,
         enableTrail: function () { cursorTrailOn = true; },
