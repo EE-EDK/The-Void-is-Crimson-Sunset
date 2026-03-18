@@ -183,8 +183,7 @@ h2 {
     color: var(--primary-light);
     text-shadow: 0 0 15px var(--primary-glow), 0 0 5px #000;
     letter-spacing: 3px;
-    opacity: 0;
-    animation: slideIn var(--fade-duration) ease-out forwards;
+    animation: slideIn var(--fade-duration) ease-out both;
 }
 
 /* Paragraphs */
@@ -193,9 +192,8 @@ p {
     text-align: left;
     color: #f0f0f0; /* Slightly brighter for better contrast */
     text-shadow: 0 0 3px rgba(0, 0, 0, 0.8), 1px 1px 2px rgba(0, 0, 0, 1);
-    opacity: 0;
     line-height: 1.7; /* Better readability */
-    animation: fadeInText var(--fade-duration) ease-out forwards;
+    animation: fadeInText var(--fade-duration) ease-out both;
 }
 
 /* Drop Cap */
@@ -576,17 +574,22 @@ body.fade-out-to-next {
     filter: brightness(0.7) contrast(1.1) !important;
 }
 
-/* Text bleed — dramatic red shadow that pulses on paragraphs */
+/* Text bleed — dramatic red shadow that pulses on paragraphs.
+   Uses animation-name override only to avoid clobbering fadeInText fill-mode
+   which would reset opacity to 0 and make text disappear. */
 .horror-text-bleed {
-    animation: horror-bleed 4s ease-in-out;
+    animation-name: horror-bleed !important;
+    animation-duration: 4s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-fill-mode: both !important;
 }
 
 @keyframes horror-bleed {
-    0%   { text-shadow: none; color: inherit; }
-    20%  { text-shadow: 0 0 10px rgba(139, 0, 0, 0.7), 0 0 25px rgba(139, 0, 0, 0.4), 0 0 50px rgba(80, 0, 0, 0.2); }
-    50%  { text-shadow: 0 0 15px rgba(139, 0, 0, 0.5), 0 0 35px rgba(80, 0, 0, 0.3); color: #ff9999; }
-    80%  { text-shadow: 0 0 8px rgba(139, 0, 0, 0.3); }
-    100% { text-shadow: none; color: inherit; }
+    0%   { text-shadow: none; color: inherit; opacity: 1; }
+    20%  { text-shadow: 0 0 10px rgba(139, 0, 0, 0.7), 0 0 25px rgba(139, 0, 0, 0.4), 0 0 50px rgba(80, 0, 0, 0.2); opacity: 1; }
+    50%  { text-shadow: 0 0 15px rgba(139, 0, 0, 0.5), 0 0 35px rgba(80, 0, 0, 0.3); color: #ff9999; opacity: 1; }
+    80%  { text-shadow: 0 0 8px rgba(139, 0, 0, 0.3); opacity: 1; }
+    100% { text-shadow: none; color: inherit; opacity: 1; }
 }
 
 /* Whisper text — hidden messages revealed on hover */
