@@ -336,41 +336,36 @@
                     vec3 ringColor = mix(vec3(1.0, 0.5, 0.1), vec3(1.0, 0.9, 0.7), photonRing);
                     col += ringColor * photonRing * 1.37;
 
-                    // Gravitational lensing — far-side disc image arcing over the top
-                    // The accretion disc behind the BH is bent by gravity into a band
-                    // that wraps above (and below) the shadow
+                    // Gravitational lensing — far-side disc bent over the shadow
+                    // Crescent hugging the shadow edge, strongest at top
                     float lensAngle = atan(uv.y, uv.x);
 
-                    // Top arc: elliptical path offset upward from center
-                    vec2 topArcCenter = vec2(0.0, -0.08); // offset down so arc wraps over top
-                    float topArcDist = length(uv - topArcCenter);
-                    float topArcRadius = 0.42;
-                    float topArcBand = smoothstep(0.04, 0.0, abs(topArcDist - topArcRadius));
-                    // Only show upper half of the ellipse (the lensed far side)
-                    float topMask = smoothstep(-0.05, 0.15, uv.y);
-                    topArcBand *= topMask;
+                    // Band at the shadow boundary radius
+                    float lensRadius = 0.38;
+                    float lensBandRaw = smoothstep(0.06, 0.0, abs(dist - lensRadius));
 
-                    // Bottom arc: underside lensing, dimmer
-                    vec2 botArcCenter = vec2(0.0, 0.06);
-                    float botArcDist = length(uv - botArcCenter);
-                    float botArcRadius = 0.40;
-                    float botArcBand = smoothstep(0.03, 0.0, abs(botArcDist - botArcRadius));
-                    float botMask = smoothstep(0.05, -0.12, uv.y);
-                    botArcBand *= botMask;
+                    // Crescent mask: strongest at top, fades toward sides
+                    // uv.y/dist = cosine of angle from top, raised to shape the crescent
+                    float crescentFactor = max(0.0, uv.y / max(dist, 0.001));
+                    float topCresc = pow(crescentFactor, 1.5) * 1.2;
 
-                    // Doppler beaming — left side brighter (approaching), right dimmer
-                    float doppler = 0.6 + 0.4 * sin(lensAngle + 1.57); // peaks on left
+                    // Bottom crescent (underside lensing), dimmer
+                    float botCrescentFactor = max(0.0, -uv.y / max(dist, 0.001));
+                    float botCresc = pow(botCrescentFactor, 2.0) * 0.4;
 
-                    // Texture the bands with noise so they aren't perfectly smooth
-                    float lensNoise = noise(vec2(lensAngle * 12.0 + u_time * 0.15, dist * 6.0));
-                    float lensDetail = 0.7 + lensNoise * 0.3;
+                    float crescentMask = topCresc + botCresc;
 
-                    // Color: hot orange-white gradient matching the accretion disc
-                    vec3 lensColor = mix(vec3(0.8, 0.2, 0.0), vec3(1.0, 0.7, 0.3), lensNoise);
+                    // Doppler beaming — left side brighter
+                    float doppler = 0.65 + 0.35 * sin(lensAngle + 1.57);
 
-                    // Combine top and bottom arcs
-                    float lensBand = topArcBand + botArcBand * 0.5; // underside is dimmer
-                    col += lensColor * lensBand * doppler * lensDetail * 0.9;
+                    // Texture with noise for organic feel
+                    float lensNoise = noise(vec2(lensAngle * 10.0 + u_time * 0.12, dist * 8.0));
+                    float lensDetail = 0.75 + lensNoise * 0.25;
+
+                    // Hot orange-white color
+                    vec3 lensColor = mix(vec3(0.9, 0.25, 0.02), vec3(1.0, 0.75, 0.35), lensNoise);
+
+                    col += lensColor * lensBandRaw * crescentMask * doppler * lensDetail * 1.0;
 
                     // Leaking / Bleeding elements
                     float leak = pow(fbm(uv * rot(u_time * 0.1) * 3.0), 3.0) * density;
