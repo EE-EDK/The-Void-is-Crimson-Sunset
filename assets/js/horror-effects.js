@@ -20,16 +20,16 @@
     // =========================================================================
     var CONFIG = {
         audio: {
-            masterVolume: 0.18,
-            droneBase: 0.05,
-            whisperVolume: 0.04,
-            heartbeatVolume: 0.12,
-            sharpVolume: 0.06,
-            stingerVolume: 0.10,
-            impactVolume: 0.15,
-            scrapeVolume: 0.04,
-            breathVolume: 0.03,
-            binauralVolume: 0.02,
+            masterVolume: 0.35,      // Increased from 0.18
+            droneBase: 0.12,         // Increased from 0.05
+            whisperVolume: 0.15,     // Increased from 0.04
+            heartbeatVolume: 0.25,   // Increased from 0.12
+            sharpVolume: 0.15,       // Increased from 0.06
+            stingerVolume: 0.25,     // Increased from 0.10
+            impactVolume: 0.35,      // Increased from 0.15
+            scrapeVolume: 0.12,      // Increased from 0.04
+            breathVolume: 0.10,      // Increased from 0.03
+            binauralVolume: 0.08,    // Increased from 0.02
         },
         visual: {
             glitchDuration: 300,

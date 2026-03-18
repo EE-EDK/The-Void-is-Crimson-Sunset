@@ -171,66 +171,80 @@
                 float dist = length(uv);
 
                 // 1. THE VORTEX / CHASM (Main Page Special)
-                // Swirl logic that increases towards the center
                 if (u_isMainPage > 0.5) {
-                    float swirl = 4.0 * exp(-dist * 1.5);
-                    uv *= rot(u_time * 0.2 + swirl);
+                    float swirl = 4.5 * exp(-dist * 1.2);
+                    uv *= rot(u_time * 0.25 + swirl);
                 }
 
                 // 2. THE EVENT HORIZON (Peripheral Refraction)
-                float bend = smoothstep(0.3, 1.5, dist) * (0.1 + u_tension * 0.4);
-                vec2 refractedUv = uv + normalize(uv) * bend * fbm(uv * 2.0 + u_time * 0.1);
+                float bend = smoothstep(0.2, 1.5, dist) * (0.15 + u_tension * 0.45);
+                vec2 refractedUv = uv + normalize(uv) * bend * fbm(uv * 1.5 + u_time * 0.1);
 
-                // 3. REALITY DISPLACEMENT (Domain Warping)
+                // 3. NEBULA & STARFIELD LAYER (Added for depth)
+                float n = fbm(refractedUv * 0.8 + u_time * 0.05);
+                float stars = pow(hash(floor(refractedUv * 100.0)), 50.0) * 0.8;
+                stars *= step(0.4, fbm(refractedUv * 2.0)); // Group stars
+
+                // 4. REALITY DISPLACEMENT (Domain Warping)
                 vec2 q = vec2(0.0);
-                q.x = fbm(refractedUv + 0.00 * u_time);
+                q.x = fbm(refractedUv + 0.1 * u_time);
                 q.y = fbm(refractedUv + vec2(1.0));
 
                 vec2 r = vec2(0.0);
                 r.x = fbm(refractedUv + 1.0 * q + vec2(1.7, 9.2) + 0.15 * u_time);
                 r.y = fbm(refractedUv + 1.0 * q + vec2(8.3, 2.8) + 0.126 * u_time);
 
-                float fluidNoise = fbm(refractedUv + r * (2.0 + u_tension * 2.0) - vec2(0.0, u_scroll * 2.0));
+                float fluidNoise = fbm(refractedUv + r * (2.0 + u_tension * 2.5) - vec2(0.0, u_scroll * 2.5));
 
-                // 4. ABYSSAL VOLUMETRICS
-                float safeZone = 1.0 - smoothstep(0.1, 1.2, dist);
-                if (u_isMainPage > 0.5) safeZone *= 0.8; // Darker center on main page
+                // 5. ABYSSAL VOLUMETRICS
+                float safeZone = 1.0 - smoothstep(0.1, 1.3, dist);
+                if (u_isMainPage > 0.5) safeZone *= 0.7; // Darker center on main page
                 
-                float density = (1.0 - safeZone) * (0.5 + u_tension * 0.5);
+                float density = (1.0 - safeZone) * (0.6 + u_tension * 0.4);
                 
-                vec3 col = mix(vec3(0.01, 0.005, 0.005), u_themeColor * 1.5, fluidNoise);
+                // Brighter theme mixing
+                vec3 baseColor = u_themeColor * 0.8;
+                vec3 col = mix(baseColor * 0.1, u_themeColor * 2.5, fluidNoise);
                 
-                // Rotating Accretion Disk Rays
+                // Add Nebula color
+                col += u_themeColor * n * 0.3;
+                col += stars * (0.5 + u_tension);
+
+                // Rotating Accretion Disk Rays (Brighter)
                 float angle = atan(uv.y, uv.x);
-                float rays = noise(vec2(angle * 3.0 + u_time * 0.1, dist * 0.5)) * 0.5 + 0.5;
-                col += u_themeColor * rays * density * 0.4;
+                float rays = noise(vec2(angle * 4.0 + u_time * 0.2, dist * 0.4)) * 0.5 + 0.5;
+                col += u_themeColor * rays * density * 0.7;
 
-                // 5. THE CHASM CORE (Visualizing the Hole)
+                // 6. THE CHASM CORE (Visualizing the Hole)
                 if (u_isMainPage > 0.5) {
-                    float hole = smoothstep(0.4, 0.0, dist);
-                    col *= (1.0 - hole * 0.9); // Deep dark core
+                    float hole = smoothstep(0.45, 0.0, dist);
+                    col *= (1.0 - hole * 0.95); // Deep dark core
+                    
+                    // Glowing inner rim
+                    float rim = smoothstep(0.48, 0.42, dist) * smoothstep(0.35, 0.42, dist);
+                    col += u_themeColor * rim * 2.0;
                     
                     // Jagged inner edge
-                    float edge = noise(vec2(angle * 5.0, u_time)) * 0.1;
-                    if (dist < 0.3 + edge) {
-                        col *= 0.5;
+                    float edge = noise(vec2(angle * 6.0, u_time * 0.5)) * 0.12;
+                    if (dist < 0.35 + edge) {
+                        col *= 0.3;
                     }
                 }
 
                 // NEURAL FLUID WEAVE
-                float weave = noise(refractedUv * 8.0 + r * 4.0) * density;
-                col -= vec3(weave * 0.4);
+                float weave = noise(refractedUv * 12.0 + r * 6.0) * density;
+                col -= vec3(weave * 0.5);
 
                 // TEMPORAL LENS
-                float chromaticOffset = dist * (0.01 + u_tension * 0.03);
+                float chromaticOffset = dist * (0.015 + u_tension * 0.04);
                 float rColor = fbm(refractedUv + vec2(chromaticOffset, 0.0) + r);
                 float bColor = fbm(refractedUv - vec2(chromaticOffset, 0.0) + r);
-                col.r += rColor * 0.1 * density;
-                col.b += bColor * 0.1 * density;
+                col.r += rColor * 0.15 * density;
+                col.b += bColor * 0.15 * density;
 
-                // Final vignette
-                col *= smoothstep(2.5, 0.1, dist * (0.7 + u_tension * 0.4));
-                col += hash(uv * 100.0 + u_time) * 0.04; // Grain
+                // Final vignette & balance
+                col *= smoothstep(3.0, 0.1, dist * (0.6 + u_tension * 0.4));
+                col += hash(uv * 120.0 + u_time) * 0.05; // Grain
 
                 gl_FragColor = vec4(col, 1.0);
             }
