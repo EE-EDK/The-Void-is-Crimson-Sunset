@@ -66,24 +66,34 @@
         }
         try {
             ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // --- SAFETY LIMITER (prevents runaway feedback from ever reaching speakers) ---
+            var limiter = ctx.createDynamicsCompressor();
+            limiter.threshold.value = -6;   // Start compressing at -6dB
+            limiter.knee.value = 3;
+            limiter.ratio.value = 20;       // Brickwall limiting
+            limiter.attack.value = 0.001;   // Instant clamp
+            limiter.release.value = 0.1;
+            limiter.connect(ctx.destination);
+
             master = ctx.createGain();
             master.gain.value = CONFIG.audio.masterVolume;
-            master.connect(ctx.destination);
+            master.connect(limiter);
 
             // --- SPATIAL REVERB BUS (Creates a vast, cavernous environment) ---
             reverbNode = ctx.createGain();
-            reverbNode.gain.value = 0.6; // Wet send level
+            reverbNode.gain.value = 0.3; // Wet send level (was 0.6 — halved to prevent buildup)
 
             var delayL = ctx.createDelay(); delayL.delayTime.value = 0.27;
             var delayR = ctx.createDelay(); delayR.delayTime.value = 0.37;
-            var fbL = ctx.createGain(); fbL.gain.value = 0.45;
-            var fbR = ctx.createGain(); fbR.gain.value = 0.45;
-            var crossL = ctx.createGain(); crossL.gain.value = 0.25;
-            var crossR = ctx.createGain(); crossR.gain.value = 0.25;
+            var fbL = ctx.createGain(); fbL.gain.value = 0.25;   // was 0.45
+            var fbR = ctx.createGain(); fbR.gain.value = 0.25;   // was 0.45
+            var crossL = ctx.createGain(); crossL.gain.value = 0.1;  // was 0.25
+            var crossR = ctx.createGain(); crossR.gain.value = 0.1;  // was 0.25
 
             var damp = ctx.createBiquadFilter();
             damp.type = 'lowpass';
-            damp.frequency.value = 2500;
+            damp.frequency.value = 2000;  // was 2500 — tighter damping kills high buildup
 
             reverbNode.connect(damp);
             damp.connect(delayL);
@@ -165,7 +175,7 @@
         noiseLfo.type = 'sine';
         noiseLfo.frequency.value = 0.015;
         var noiseLfoAmt = ctx.createGain();
-        noiseLfoAmt.gain.value = 80;
+        noiseLfoAmt.gain.value = 30; // was 80 — reduced to prevent filter sweep instability
         noiseLfo.connect(noiseLfoAmt);
         noiseLfoAmt.connect(bp.frequency);
         noiseLfo.start();
@@ -196,7 +206,7 @@
         mod.type = 'sine';
         mod.frequency.value = freq * 0.5;
         var modG = ctx.createGain();
-        modG.gain.value = freq * 0.02;
+        modG.gain.value = Math.min(freq * 0.02, 5); // Cap FM depth to prevent instability
         mod.connect(modG);
         modG.connect(osc.frequency);
         mod.start();
@@ -224,7 +234,7 @@
         tension *= 0.97;
         if (tension < 0.01) tension = 0;
         var now = ctx.currentTime;
-        var targetVol = Math.min(CONFIG.audio.droneBase * (1 + tension * 3), 0.4);
+        var targetVol = Math.min(CONFIG.audio.droneBase * (1 + tension * 2), 0.25);
         droneGain.gain.linearRampToValueAtTime(targetVol, now + 0.5);
         setTimeout(updateTensionLoop, 500);
     }
@@ -248,10 +258,16 @@
     }
 
     function setDroneIntensity(intensity, force) {
+        var clamped = Math.min(intensity, 1.0);
         if (force) {
-            tension = Math.min(intensity, 1.0);
+            tension = clamped;
         } else {
-            tension = Math.max(tension, Math.min(intensity, 1.0));
+            // Smoothly follow the target — rise fast, fall slower
+            if (clamped > tension) {
+                tension = clamped;
+            } else {
+                tension += (clamped - tension) * 0.3;
+            }
         }
     }
 
