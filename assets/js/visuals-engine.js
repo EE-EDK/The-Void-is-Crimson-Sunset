@@ -227,17 +227,33 @@
 
                 // 6. THE CHASM CORE (Visualizing the Hole)
                 if (u_isMainPage > 0.5) {
-                    float hole = smoothstep(0.45, 0.0, dist);
-                    col *= (1.0 - hole * 0.95); // Deep dark core
+                    // Counter-rotating coordinate system for the inner core
+                    float coreSwirl = 2.0 * exp(-dist * 2.0);
+                    vec2 coreUv = uv * rot(-u_time * 0.15 - coreSwirl);
                     
-                    // Glowing inner rim
-                    float rim = smoothstep(0.48, 0.42, dist) * smoothstep(0.35, 0.42, dist);
-                    col += u_themeColor * rim * 2.0;
+                    // Multiple dark organic layers
+                    float layer1 = fbm(coreUv * 2.0 + u_time * 0.05);
+                    float layer2 = fbm(coreUv * 4.0 - u_time * 0.08);
+                    float layer3 = fbm(coreUv * 8.0 + u_time * 0.1);
                     
-                    // Jagged inner edge
-                    float edge = noise(vec2(angle * 6.0, u_time * 0.5)) * 0.12;
-                    if (dist < 0.35 + edge) {
-                        col *= 0.3;
+                    // Organic edges for each layer
+                    float mask1 = smoothstep(0.45 + layer1 * 0.15, 0.35, dist);
+                    float mask2 = smoothstep(0.35 + layer2 * 0.1, 0.25, dist);
+                    float mask3 = smoothstep(0.25 + layer3 * 0.05, 0.1, dist);
+                    
+                    // Blend layers into the core
+                    col = mix(col, col * 0.4, mask1);
+                    col = mix(col, col * 0.2, mask2);
+                    col = mix(col, vec3(0.0), mask3); // Absolute void center
+                    
+                    // Glowing inner rim (Smoother transition)
+                    float rim = smoothstep(0.5, 0.4, dist) * smoothstep(0.3, 0.4, dist);
+                    col += u_themeColor * rim * 1.5 * (0.8 + layer1 * 0.4);
+                    
+                    // Leaking / Bleeding elements
+                    float leak = pow(fbm(uv * rot(u_time * 0.1) * 3.0), 3.0) * density;
+                    if (dist < 0.6) {
+                        col -= vec3(leak * 0.3);
                     }
                 }
 
