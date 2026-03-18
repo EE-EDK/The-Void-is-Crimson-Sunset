@@ -191,10 +191,51 @@
                 float bend = smoothstep(0.2, 1.5, dist) * (0.15 + u_tension * 0.45);
                 vec2 refractedUv = uv + normalize(uv) * bend * fbm(uv * 1.5 + u_time * 0.1);
 
-                // 3. NEBULA & STARFIELD LAYER (Added for depth)
+                // 3. NEBULA & STARFIELD LAYER — photorealistic deep space
                 float n = fbm(refractedUv * 0.8 + u_time * 0.05);
-                float stars = pow(hash(floor(refractedUv * 100.0)), 50.0) * 0.8;
-                stars *= step(0.4, fbm(refractedUv * 2.0)); // Group stars
+
+                // Multi-population starfield with varied sizes and color temperatures
+                vec3 starCol = vec3(0.0);
+
+                // Population A: Bright foreground stars (sparse, large)
+                vec2 starGridA = floor(refractedUv * 40.0);
+                float starSeedA = hash(starGridA);
+                float starBrightA = pow(starSeedA, 80.0);
+                vec2 starCellA = fract(refractedUv * 40.0) - 0.5;
+                // Jitter star position within cell
+                vec2 starOffA = vec2(hash(starGridA + 0.1), hash(starGridA + 0.2)) - 0.5;
+                float starDistA = length(starCellA - starOffA * 0.6);
+                float starA = smoothstep(0.06, 0.01, starDistA) * starBrightA;
+                // Color temperature from seed: hot blue-white to warm amber
+                float tempA = hash(starGridA + 7.0);
+                vec3 starTintA = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.85, 0.6), tempA);
+                // Subtle twinkle
+                starA *= 0.7 + 0.3 * sin(u_time * (2.0 + starSeedA * 4.0) + starSeedA * 6.28);
+                starCol += starTintA * starA * 1.2;
+
+                // Population B: Medium field stars
+                vec2 starGridB = floor(refractedUv * 90.0);
+                float starSeedB = hash(starGridB);
+                float starBrightB = pow(starSeedB, 60.0);
+                vec2 starCellB = fract(refractedUv * 90.0) - 0.5;
+                vec2 starOffB = vec2(hash(starGridB + 3.1), hash(starGridB + 3.2)) - 0.5;
+                float starDistB = length(starCellB - starOffB * 0.5);
+                float starB = smoothstep(0.04, 0.005, starDistB) * starBrightB;
+                float tempB = hash(starGridB + 5.0);
+                vec3 starTintB = mix(vec3(0.8, 0.85, 1.0), vec3(1.0, 0.9, 0.75), tempB);
+                starCol += starTintB * starB * 0.7;
+
+                // Population C: Dense dim background stars (tiny, numerous)
+                vec2 starGridC = floor(refractedUv * 200.0);
+                float starSeedC = hash(starGridC);
+                float starBrightC = pow(starSeedC, 45.0) * 0.4;
+                starCol += vec3(0.9, 0.9, 1.0) * starBrightC;
+
+                // Cluster stars in nebula-dense regions — not everywhere
+                float starDensity = fbm(refractedUv * 2.0);
+                starCol *= 0.3 + starDensity * 0.9;
+
+                float stars = (starCol.r + starCol.g + starCol.b) / 3.0; // scalar fallback for legacy use
 
                 // 4. REALITY DISPLACEMENT (Domain Warping)
                 vec2 q = vec2(0.0);
@@ -219,12 +260,42 @@
                 
                 // Add Nebula color
                 col += u_themeColor * n * 0.3;
-                col += stars * (0.5 + u_tension);
+                // Deep space dust clouds — subtle color variation in the background
+                float dust1 = fbm(refractedUv * 1.2 + vec2(u_time * 0.02, 0.0));
+                float dust2 = fbm(refractedUv * 1.8 - vec2(0.0, u_time * 0.015));
+                col += vec3(0.15, 0.02, 0.04) * dust1 * 0.3; // warm dust lane
+                col += vec3(0.02, 0.03, 0.08) * dust2 * 0.2; // cool distant nebulosity
+                col += starCol * (0.5 + u_tension);
 
-                // Rotating Accretion Disk Rays (Normal Speed)
+                // Rotating Accretion Disk — multi-layer photorealistic structure
                 float angle = atan(uv.y, uv.x);
+
+                // Primary ray structure — broad sweeping arms
                 float rays = noise(vec2(angle * 4.0 + u_time * 0.2, dist * 0.4)) * 0.5 + 0.5;
                 col += u_themeColor * rays * density * 0.7;
+
+                // Filamentary gas streams — ridged noise creates thin bright veins
+                float ridged1 = 1.0 - abs(noise(vec2(angle * 8.0 + u_time * 0.15, dist * 1.5 - u_time * 0.08)) * 2.0 - 1.0);
+                ridged1 = pow(ridged1, 3.0); // sharpen into filaments
+                float filamentMask = smoothstep(0.3, 0.6, dist) * smoothstep(1.6, 0.8, dist);
+                col += vec3(1.0, 0.3, 0.1) * ridged1 * filamentMask * 0.25;
+
+                // Secondary spiral arm — counter-wound for depth
+                float arm2 = noise(vec2(angle * 6.0 - u_time * 0.12, dist * 0.8 + u_time * 0.05));
+                arm2 = smoothstep(0.4, 0.7, arm2);
+                col += u_themeColor * arm2 * density * 0.3;
+
+                // Hot inner accretion glow — orange/white gradient near the disc center
+                float innerHeat = smoothstep(0.8, 0.35, dist) * smoothstep(0.15, 0.35, dist);
+                float heatNoise = noise(vec2(angle * 5.0 + u_time * 0.3, dist * 2.0));
+                vec3 hotColor = mix(vec3(0.6, 0.1, 0.0), vec3(1.0, 0.6, 0.2), heatNoise);
+                col += hotColor * innerHeat * density * 0.35;
+
+                // Fine turbulent detail — high-frequency noise at the gas scale
+                float turbulence = noise(uv * rot(u_time * 0.08) * 8.0 + r * 2.0);
+                turbulence *= noise(uv * rot(-u_time * 0.06) * 14.0);
+                float turbMask = smoothstep(0.2, 0.7, dist) * smoothstep(1.5, 0.7, dist);
+                col += u_themeColor * turbulence * turbMask * 0.4;
 
                 // 6. THE CHASM CORE (Visualizing the Hole)
                 if (u_isMainPage > 0.5) {
