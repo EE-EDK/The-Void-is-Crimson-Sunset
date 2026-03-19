@@ -1396,12 +1396,19 @@
         // they can never restart (e.g. when textBleed removes its class,
         // the browser would otherwise re-trigger fadeIn from opacity:0).
         // The !important on .horror-text-bleed still wins for bleed effects.
+        // Kill initial fade-in animations so horror effects can retrigger them,
+        // but skip index page title elements which have their own phased intro
+        var isIndexPage = !!document.querySelector('.acts-navigation');
+        var killDelay = isIndexPage ? 8000 : 3500; // Wait for index title phases to finish
         setTimeout(function() {
-            var els = document.querySelectorAll('h1, h2, .subtitle, article p, .container p');
+            var selector = isIndexPage
+                ? 'h2, .subtitle, article p' // Skip h1 and .container p on index
+                : 'h1, h2, .subtitle, article p, .container p';
+            var els = document.querySelectorAll(selector);
             for (var i = 0; i < els.length; i++) {
                 els[i].style.animation = 'none';
             }
-        }, 3500);
+        }, killDelay);
     }
 
     if (document.readyState === 'loading') {
