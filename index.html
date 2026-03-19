@@ -83,22 +83,27 @@
             transform: none !important;
         }
 
-        /* Title spans — JS controls visibility and color transitions */
+        /* Each title line is a block so they never wrap mid-word */
+        .title-line {
+            display: block;
+            white-space: nowrap;
+        }
+
         .title-the-void {
-            display: inline;
-            color: #ffffff;
-            transition: color 0.8s ease;
-        }
-
-        .title-subtitle {
-            display: inline;
             color: #ffffff;
         }
 
-        .title-subtitle .cascade-letter {
+        .title-is {
+            color: #ffffff;
+        }
+
+        .title-crimson-sunset {
+            color: #ffffff;
+        }
+
+        .title-crimson-sunset .cascade-letter {
             display: inline-block;
             color: #ffffff;
-            transition: color 0.15s ease;
             min-width: 0.3em;
         }
 
@@ -350,7 +355,7 @@
     <canvas id="bg-canvas" aria-hidden="true"></canvas>
 
     <main id="main-content" class="container" role="main">
-        <h1 class="title"><span class="title-the-void">The <span class="void-word">Void</span></span> <span class="title-subtitle" id="title-subtitle">at Crimson Sunset</span></h1>
+        <h1 class="title"><span class="title-line title-the-void">The <span class="void-word">Void</span></span><span class="title-line title-is" id="title-is">is</span><span class="title-line title-crimson-sunset" id="title-crimson-sunset">Crimson Sunset</span></h1>
         <p class="index-tagline horror-whisper" data-whisper="you were always coming here" style="margin-left: 100px;">interactive cosmic horror experience</p>
         <nav class="acts-navigation" role="navigation" aria-label="Story chapters">
             <a href="./The-Fifth-Harmonic-ACT1.html" class="act-link" data-subtitle="The Pattern calls">ACT I: The Fifth Harmonic</a>
@@ -363,21 +368,26 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var theVoid = document.querySelector('.title-the-void');
-            var subtitle = document.getElementById('title-subtitle');
+            var isLine = document.getElementById('title-is');
+            var csLine = document.getElementById('title-crimson-sunset');
             var voidWord = document.querySelector('.void-word');
 
-            // Hide everything initially
-            theVoid.style.opacity = '0';
-            subtitle.style.opacity = '0';
+            // All 3 lines start invisible in their fixed positions
+            theVoid.style.color = 'transparent';
+            isLine.style.color = 'transparent';
+            csLine.style.color = 'transparent';
+
+            var voidColors = ['#000000','#1a0000','#3a0000','#5a0000','#8b0000','#aa2200','#cc3333','#dd6655','#eeaaaa','#ffffff'];
+            var cascadeColors = [
+                '#1a0000','#2d0000','#4a0000','#6b0000','#8b0000',
+                '#a52a00','#b84400','#cc5500','#d46a00','#dd7700',
+                '#e68a00','#ee9911','#dd7700','#cc5500','#bb3300',
+                '#cc5544','#dd8877','#eebbaa','#f5ddd5','#ffffff'
+            ];
 
             // === PHASE 1: "The Void" — black → red → white (2.5s) ===
-            var voidColors = ['#000000','#1a0000','#3a0000','#5a0000','#8b0000','#aa2200','#cc3333','#dd6655','#eeaaaa','#ffffff'];
             var voidStep = 0;
-            theVoid.style.color = '#000000';
-            theVoid.style.opacity = '1';
-
             var voidInterval = setInterval(function() {
-                voidStep++;
                 if (voidStep >= voidColors.length) {
                     clearInterval(voidInterval);
                     theVoid.style.color = '#ffffff';
@@ -385,20 +395,31 @@
                     return;
                 }
                 theVoid.style.color = voidColors[voidStep];
-            }, 250); // 10 steps × 250ms = 2.5s
+                voidStep++;
+            }, 250);
 
-            // === PHASE 2: "at Crimson Sunset" — cascading color wave (2.5s) ===
+            // === PHASE 2: "is" phases in same way (fast, 0.8s), then "Crimson Sunset" cascades ===
             function startPhase2() {
-                var text = subtitle.textContent;
-                subtitle.textContent = '';
-                subtitle.style.opacity = '1';
+                // "is" does a quick color phase
+                var isStep = 0;
+                var isColors = ['#1a0000','#5a0000','#8b0000','#cc3333','#eeaaaa','#ffffff'];
+                var isInterval = setInterval(function() {
+                    if (isStep >= isColors.length) {
+                        clearInterval(isInterval);
+                        isLine.style.color = '#ffffff';
+                        startPhase3();
+                        return;
+                    }
+                    isLine.style.color = isColors[isStep];
+                    isStep++;
+                }, 130);
+            }
 
-                var cascadeColors = [
-                    '#1a0000','#2d0000','#4a0000','#6b0000','#8b0000',
-                    '#a52a00','#b84400','#cc5500','#d46a00','#dd7700',
-                    '#e68a00','#ee9911','#dd7700','#cc5500','#bb3300',
-                    '#cc5544','#dd8877','#eebbaa','#f5ddd5','#ffffff'
-                ];
+            // === PHASE 3: "Crimson Sunset" — cascading letter wave (2.5s) ===
+            function startPhase3() {
+                var text = csLine.textContent;
+                csLine.textContent = '';
+                csLine.style.color = '#ffffff';
 
                 var spans = [];
                 for (var i = 0; i < text.length; i++) {
@@ -406,14 +427,12 @@
                     span.className = 'cascade-letter';
                     span.textContent = text[i] === ' ' ? '\u00A0' : text[i];
                     span.style.color = 'transparent';
-                    subtitle.appendChild(span);
+                    csLine.appendChild(span);
                     spans.push(span);
                 }
 
-                // Stagger each letter's color cycle
-                var totalLetters = spans.length;
-                var cycleTime = 2500; // 2.5s total
-                var staggerDelay = 80; // ms between each letter starting
+                var cycleTime = 2500;
+                var staggerDelay = 80;
 
                 spans.forEach(function(span, idx) {
                     setTimeout(function() {
@@ -432,7 +451,7 @@
                     }, idx * staggerDelay);
                 });
 
-                // === PHASE 3: Tendrils after both phases ===
+                // === PHASE 4: Tendrils start ===
                 setTimeout(function() {
                     if (voidWord) voidWord.classList.add('tendrils-active');
                 }, cycleTime + 500);
