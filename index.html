@@ -60,11 +60,11 @@
         .container {
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             min-height: 100vh;
             text-align: center;
-            padding: 0 5%;
+            padding: 12vh 5% 0;
             position: relative;
             z-index: 10000;
         }
@@ -87,6 +87,7 @@
         .title-line {
             display: block;
             white-space: nowrap;
+            line-height: 1.1;
         }
 
         .title-the-void {
@@ -372,50 +373,73 @@
             var csLine = document.getElementById('title-crimson-sunset');
             var voidWord = document.querySelector('.void-word');
 
-            // All 3 lines start invisible in their fixed positions
+            // All 3 lines start invisible
             theVoid.style.color = 'transparent';
             isLine.style.color = 'transparent';
             csLine.style.color = 'transparent';
 
-            var voidColors = ['#000000','#1a0000','#3a0000','#5a0000','#8b0000','#aa2200','#cc3333','#dd6655','#eeaaaa','#ffffff'];
-            var cascadeColors = [
-                '#1a0000','#2d0000','#4a0000','#6b0000','#8b0000',
-                '#a52a00','#b84400','#cc5500','#d46a00','#dd7700',
-                '#e68a00','#ee9911','#dd7700','#cc5500','#bb3300',
-                '#cc5544','#dd8877','#eebbaa','#f5ddd5','#ffffff'
-            ];
-
-            // === PHASE 1: "The Void" — black → red → white (2.5s) ===
-            var voidStep = 0;
-            var voidInterval = setInterval(function() {
-                if (voidStep >= voidColors.length) {
-                    clearInterval(voidInterval);
-                    theVoid.style.color = '#ffffff';
-                    startPhase2();
-                    return;
+            // --- Smooth rAF color ramp engine ---
+            // Interpolates through an array of {r,g,b} stops over durationMs
+            function smoothColorRamp(el, ramp, durationMs, onDone) {
+                var start = null;
+                function tick(ts) {
+                    if (!start) start = ts;
+                    var t = Math.min((ts - start) / durationMs, 1.0);
+                    var pos = t * (ramp.length - 1);
+                    var idx = Math.min(Math.floor(pos), ramp.length - 2);
+                    var frac = pos - idx;
+                    var c0 = ramp[idx], c1 = ramp[idx + 1];
+                    var r = Math.round(c0[0] + (c1[0] - c0[0]) * frac);
+                    var g = Math.round(c0[1] + (c1[1] - c0[1]) * frac);
+                    var b = Math.round(c0[2] + (c1[2] - c0[2]) * frac);
+                    el.style.color = 'rgb(' + r + ',' + g + ',' + b + ')';
+                    if (t < 1.0) requestAnimationFrame(tick);
+                    else if (onDone) onDone();
                 }
-                theVoid.style.color = voidColors[voidStep];
-                voidStep++;
-            }, 250);
-
-            // === PHASE 2: "is" phases in same way (fast, 0.8s), then "Crimson Sunset" cascades ===
-            function startPhase2() {
-                // "is" does a quick color phase
-                var isStep = 0;
-                var isColors = ['#1a0000','#5a0000','#8b0000','#cc3333','#eeaaaa','#ffffff'];
-                var isInterval = setInterval(function() {
-                    if (isStep >= isColors.length) {
-                        clearInterval(isInterval);
-                        isLine.style.color = '#ffffff';
-                        startPhase3();
-                        return;
-                    }
-                    isLine.style.color = isColors[isStep];
-                    isStep++;
-                }, 130);
+                requestAnimationFrame(tick);
             }
 
-            // === PHASE 3: "Crimson Sunset" — cascading letter wave (2.5s) ===
+            // Color ramps: [r, g, b] triplets
+            // "The Void" — 12 stops, slow emergence from black through deep reds to white
+            var voidRamp = [
+                [0,0,0],[5,0,0],[15,0,0],[30,0,0],[58,0,0],
+                [90,0,0],[120,10,0],[139,0,0],[170,34,0],
+                [200,70,50],[230,160,140],[255,255,255]
+            ];
+
+            // "is" — quick 7-stop ramp
+            var isRamp = [
+                [0,0,0],[30,0,0],[90,0,0],[139,0,0],
+                [200,50,50],[235,170,160],[255,255,255]
+            ];
+
+            // "Crimson Sunset" per-letter — red-shifting sunset
+            // Lingers in warm reds/oranges/golds before fading to white
+            var sunsetRamp = [
+                [0,0,0],[8,0,0],[20,0,0],[40,0,0],
+                [70,0,0],[100,5,0],[130,10,0],[139,0,0],
+                [160,25,0],[180,50,0],[200,75,5],[220,100,10],
+                [235,130,20],[245,160,40],[255,185,60],[250,170,50],
+                [240,150,35],[225,120,15],[200,85,10],[180,60,5],
+                [190,90,50],[210,130,90],[230,175,140],
+                [242,210,190],[250,235,220],[255,255,255]
+            ];
+
+            // === PHASE 1: "The Void" — 5 seconds ===
+            smoothColorRamp(theVoid, voidRamp, 5000, function() {
+                theVoid.style.color = '#ffffff';
+                startPhase2();
+            });
+
+            // === PHASE 2: "is" — 1.2 seconds ===
+            function startPhase2() {
+                smoothColorRamp(isLine, isRamp, 1200, function() {
+                    isLine.style.color = '#ffffff';
+                    startPhase3();
+                });
+            }
+
+            // === PHASE 3: "Crimson Sunset" — staggered letters, each 3.5s sunset ramp ===
             function startPhase3() {
                 var text = csLine.textContent;
                 csLine.textContent = '';
@@ -431,30 +455,24 @@
                     spans.push(span);
                 }
 
-                var cycleTime = 2500;
-                var staggerDelay = 80;
+                var staggerDelay = 120;
+                var perLetterDuration = 3500;
 
                 spans.forEach(function(span, idx) {
                     setTimeout(function() {
-                        var step = 0;
-                        var stepTime = Math.floor((cycleTime - idx * staggerDelay) / cascadeColors.length);
-                        stepTime = Math.max(stepTime, 40);
-                        var interval = setInterval(function() {
-                            if (step >= cascadeColors.length) {
-                                clearInterval(interval);
-                                span.style.color = '#ffffff';
-                                return;
-                            }
-                            span.style.color = cascadeColors[step];
-                            step++;
-                        }, stepTime);
+                        smoothColorRamp(span, sunsetRamp, perLetterDuration, function() {
+                            span.style.color = '#ffffff';
+                        });
                     }, idx * staggerDelay);
                 });
 
-                // === PHASE 4: Tendrils start ===
+                // Total cascade: last letter start + its duration
+                var totalCascade = (spans.length - 1) * staggerDelay + perLetterDuration;
+
+                // === PHASE 4: Tendrils ===
                 setTimeout(function() {
                     if (voidWord) voidWord.classList.add('tendrils-active');
-                }, cycleTime + 500);
+                }, totalCascade + 500);
             }
         });
     </script>
