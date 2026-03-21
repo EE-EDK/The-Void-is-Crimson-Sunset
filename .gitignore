@@ -13,5 +13,15 @@ Thumbs.db
 
 # Other
 node_modules/
+dist/
 .vscode/
 .idea/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
