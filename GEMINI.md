@@ -34,3 +34,7 @@ This file contains persistent instructions and context for Gemini CLI when worki
 - [ ] IIFE pattern for JS scope isolation, `'use strict'`.
 - [ ] Always verify pathing to assets after any structural changes.
 - [ ] Audio sample volumes capped per governance: atmospheres max 0.35, stingers max 0.8, extras per-sound caps in horror-samples.js.
+
+## Conversation History Archive
+
+Past AI conversations (217 total) are archived at the workspace root: `.claude/conversation-history/`. Search `index.json` by keyword or browse `index.md` for topic-grouped context on prior decisions, approaches, and project history.

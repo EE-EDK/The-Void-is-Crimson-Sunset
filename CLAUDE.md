@@ -82,3 +82,7 @@ No build step. Edit files directly and test in browser.
 - [ ] Adaptive particle counts (1000 mobile, 2000 desktop)
 - [ ] Script load order: howler.min.js -> horror-samples.js -> horror-effects.js (all deferred)
 - [ ] Audio samples by Ulrich Wehner licensed CC-BY 4.0, attribution required in page footer
+
+## Conversation History Archive
+
+Past AI conversations (217 total) are archived at the workspace root: `.claude/conversation-history/`. Search `index.json` by keyword or browse `index.md` for topic-grouped context on prior decisions, approaches, and project history.
