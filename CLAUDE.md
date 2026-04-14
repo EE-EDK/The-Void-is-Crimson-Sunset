@@ -44,12 +44,17 @@ _development/                       # Dev sources, howler-Javascript, Temp tests
 
 ## Development
 
-No build step. Edit files directly and test in browser.
+No build step. Edit files directly and test in browser. No test framework — manual browser testing.
 
-- **Deployment**: GitHub Pages from `main` branch
-- **Live URL**: https://ee-edk.github.io/The-Void-is-Crimson/
+### Deployment (Self-Host)
 
-- No test framework — manual browser testing
+Served via Self-Host on kunz-ai-hub (Caddy + Tailscale Funnel). Static site only, no API backend.
+- **Live URL:** `https://kunz-ai-hub.tailb1d0b7.ts.net/void/app/`
+
+After pushing changes to GitHub:
+- **Automatic:** `autodeploy.timer` on kunz-ai-hub polls every 5 min and deploys if changed.
+- **Instant:** From KunzPrime, run `ENGINEERING-PROJECTS/Self-Host/scripts/deploy-remote.sh`.
+- **Manual:** On kunz-ai-hub, run `~/ENGINEERING-PROJECTS/Self-Host/scripts/deploy.sh`.
 
 ## Key Architecture
 
@@ -86,8 +91,3 @@ No build step. Edit files directly and test in browser.
 ## Conversation History Archive
 
 Past AI conversations (217 total) are archived at the workspace root: `.claude/conversation-history/`. Search `index.json` by keyword or browse `index.md` for topic-grouped context on prior decisions, approaches, and project history.
-
-
-## Auto-Commit & Push
-
-After completing each task, automatically commit all relevant changes with a descriptive message and push to `origin main`. Report what was committed. This is standing authorization — no confirmation needed.

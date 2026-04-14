@@ -27,6 +27,11 @@ This file contains persistent instructions and context for Gemini CLI when worki
 - Always verify pathing to assets after any structural changes.
 - Audio sample volumes capped per governance: atmospheres max 0.35, stingers max 0.8, extras per-sound caps in horror-samples.js.
 
+## Deployment
+
+- **Hosting:** Self-Host on kunz-ai-hub (Caddy + Tailscale Funnel). Static site only, no API.
+- **Auto-deploy:** Push to GitHub → `autodeploy.timer` pulls within 5 min. For instant deploy, use `Self-Host/scripts/deploy-remote.sh` from KunzPrime.
+
 ## TODO
 - [ ] Maintain the horror/dark aesthetic in all visual updates.
 - [ ] Use Vanilla CSS for styling (prefer it over frameworks).
@@ -38,8 +43,3 @@ This file contains persistent instructions and context for Gemini CLI when worki
 ## Conversation History Archive
 
 Past AI conversations (217 total) are archived at the workspace root: `.claude/conversation-history/`. Search `index.json` by keyword or browse `index.md` for topic-grouped context on prior decisions, approaches, and project history.
-
-
-## Auto-Commit & Push Mandate
-
-After completing each task, automatically commit all relevant changes with a descriptive message and push to `origin main`. Report what was committed. This is standing authorization — no confirmation needed.
