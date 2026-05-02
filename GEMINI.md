@@ -33,22 +33,7 @@ This file contains persistent instructions and context for Gemini CLI when worki
 - **Auto-deploy:** Push to GitHub → `autodeploy.timer` pulls within 5 min. For instant deploy, use `Self-Host/scripts/deploy-remote.sh` from KunzPrime.
 
 ## TODO
-- [ ] Maintain the horror/dark aesthetic in all visual updates.
-- [ ] Use Vanilla CSS for styling (prefer it over frameworks).
-- [ ] Ensure Three.js (r160) is used for 3D effects.
-- [ ] IIFE pattern for JS scope isolation, `'use strict'`.
-- [ ] Always verify pathing to assets after any structural changes.
-- [ ] Audio sample volumes capped per governance: atmospheres max 0.35, stingers max 0.8, extras per-sound caps in horror-samples.js.
-
-## Conversation History Archive
-
-Past AI conversations (217 total) are archived at the workspace root: `.claude/conversation-history/`. Search `index.json` by keyword or browse `index.md` for topic-grouped context on prior decisions, approaches, and project history.
+- [ ] (No pending unique tasks)
 
 ## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
+Knowledge graph available at `graphify-out/`. See `GRAPH_REPORT.md` for insights. Rebuild after code changes.
