@@ -6,10 +6,7 @@ An immersive interactive horror experience utilizing Three.js and the Web Audio 
 "The Void is Crimson" is a multi-act cinematic web experience that combines procedural visual effects with a complex spatial audio system to create a sense of impending dread and psychological horror.
 
 ### Experience the Void
-- [Launch the Experience](https://kunz-ai-hub.tailb1d0b7.ts.net/void/app/) (Self-Host via Tailscale Funnel)
-
-### Deployment
-Push to GitHub → auto-deploys to kunz-ai-hub within 5 min via `autodeploy.timer`, or instant via `Self-Host/scripts/deploy-remote.sh` from KunzPrime.
+- [Launch the Experience](https://ee-edk.github.io/The-Void-is-Crimson/)
 
 ## Architecture
 - **Act I: The Fifth Harmonic** - `act1-fifth-harmonic.html`
