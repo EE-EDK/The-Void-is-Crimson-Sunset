@@ -23,8 +23,11 @@ venv/
 __pycache__/
 *.pyc
 
-# Duplicate nested checkout (canonical repo tracks content at repo root only)
-/The-Void-is-Crimson/
+# Generated knowledge-graph output (glob + explicit layout used by tooling)
+**/graphify-out/
+/assets/js/graphify-out/
+
+# Duplicate nested checkout (canonical repo tracks content at repo root only)/The-Void-is-Crimson/
 
 # Environment
 .env
