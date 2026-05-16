@@ -27,7 +27,7 @@ __pycache__/
 **/graphify-out/
 /assets/js/graphify-out/
 
-# Duplicate nested checkout (canonical repo tracks content at repo root only)/The-Void-is-Crimson/
+# Duplicate nested checkout (canonical repo tracks content at repo root only)The-Void-is-Crimson/
 
 # Environment
 .env
